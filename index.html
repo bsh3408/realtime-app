@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>실시간 수업앱</title>
+<style>
+  :root{
+    --bg:#faf8f5; --card:#fff; --ink:#1f1b17; --soft:#6f665c;
+    --line:rgba(31,27,23,.12); --hi:#1558d6; --ok:#1a7f4b; --bad:#c0392b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17140f; --card:#221d17; --ink:#f3ede3; --soft:#a89c8c;
+           --line:rgba(243,237,227,.14); --hi:#7fa8f5; --ok:#5fca92; --bad:#ef8b7e; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Pretendard","맑은 고딕","Malgun Gothic",system-ui,sans-serif;
+       line-height:1.65;padding:28px 18px 64px}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--soft);font-size:13px;margin-bottom:26px}
+  h2{font-size:14px;color:var(--soft);font-weight:600;margin:30px 0 10px;
+     text-transform:none;letter-spacing:.02em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:16px 18px;margin-bottom:10px}
+  a.card{display:block;text-decoration:none;color:inherit}
+  a.card:hover{border-color:var(--hi)}
+  .card b{font-size:16px;display:block;margin-bottom:2px}
+  .card span{color:var(--soft);font-size:13px}
+  .soon{opacity:.5}
+  .diag div{display:flex;justify-content:space-between;gap:12px;
+            padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .diag div:last-child{border-bottom:0}
+  .diag i{font-style:normal;color:var(--soft)}
+  .ok{color:var(--ok);font-weight:700}
+  .bad{color:var(--bad);font-weight:700}
+  button{background:var(--hi);color:#fff;border:0;border-radius:9px;
+         padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .note{color:var(--soft);font-size:12.5px;margin-top:10px}
+</style>
+
+<div class="wrap">
+  <h1>실시간 수업앱</h1>
+  <div class="sub">광주하남영재교육원 · 중학 융합과정</div>
+
+  <h2>활동</h2>
+  <div class="card soon">
+    <b>염기뚜이</b>
+    <span>주방을 맡은 쥐 셰프 — 옮기는 중</span>
+  </div>
+  <div class="card soon">
+    <b>마을의 비밀</b>
+    <span>유전자와 환경 — 옮기는 중</span>
+  </div>
+
+  <h2>연결 점검</h2>
+  <div class="card diag">
+    <div><i>설정</i><span id="d1">…</span></div>
+    <div><i>서버 연결</i><span id="d2">…</span></div>
+    <div><i>왕복 시간</i><span id="d3">…</span></div>
+    <div><i>못 보낸 기록</i><span id="d4">…</span></div>
+  </div>
+  <button id="again">다시 검사</button>
+  <div class="note">
+    수업 전에 <b>학교 와이파이에서</b> 이 화면을 열어 보세요.
+    「서버 연결」이 실패하면 학교망이 막고 있는 것이니 그날은 기존 앱스크립트 링크로 진행하시면 됩니다.
+  </div>
+</div>
+
+<script type="module">
+import { DB } from './shared/db.js';
+import { CONFIG } from './shared/config.js';
+
+const $ = id => document.getElementById(id);
+const 칠하기 = (el, 글, 좋은가) => { el.textContent = 글; el.className = 좋은가 ? 'ok' : 'bad'; };
+
+async function 검사(){
+  ['d1','d2','d3','d4'].forEach(id => { $(id).textContent = '…'; $(id).className = ''; });
+
+  const 준비 = DB.init(CONFIG);
+  칠하기($('d1'), 준비 ? '되어 있음' : '아직 없음', 준비);
+
+  if (!준비){
+    $('d2').textContent = '—'; $('d3').textContent = '—';
+    $('d4').textContent = DB.밀린것() + '건';
+    return;
+  }
+
+  const t0 = performance.now();
+  try {
+    await DB._rpc('ping', {}, 8000);
+    const 걸린 = Math.round(performance.now() - t0);
+    칠하기($('d2'), '열린다', true);
+    칠하기($('d3'), 걸린 + ' ms', 걸린 < 1000);
+  } catch (e) {
+    칠하기($('d2'), '막혔거나 응답 없음', false);
+    $('d3').textContent = '—';
+  }
+  const 밀림 = DB.밀린것();
+  칠하기($('d4'), 밀림 + '건', 밀림 === 0);
+}
+
+$('again').onclick = 검사;
+검사();
+</script>
+</html>
