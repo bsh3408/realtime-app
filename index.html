@@ -44,10 +44,10 @@
   <div class="sub">광주하남영재교육원 · 중학 융합과정</div>
 
   <h2>활동</h2>
-  <div class="card soon">
+  <a class="card" href="./apps/ratatouille/">
     <b>염기뚜이</b>
-    <span>주방을 맡은 쥐 셰프 — 옮기는 중</span>
-  </div>
+    <span>주방을 맡은 쥐 셰프 — 코돈을 거꾸로 되돌린다</span>
+  </a>
   <div class="card soon">
     <b>마을의 비밀</b>
     <span>유전자와 환경 — 옮기는 중</span>
@@ -67,9 +67,9 @@
   </div>
 </div>
 
-<script type="module">
-import { DB } from './shared/db.js';
-import { CONFIG } from './shared/config.js';
+<script src="./shared/config.js"></script>
+<script src="./shared/db.js"></script>
+<script>
 
 const $ = id => document.getElementById(id);
 const 칠하기 = (el, 글, 좋은가) => { el.textContent = 글; el.className = 좋은가 ? 'ok' : 'bad'; };
@@ -77,7 +77,7 @@ const 칠하기 = (el, 글, 좋은가) => { el.textContent = 글; el.className =
 async function 검사(){
   ['d1','d2','d3','d4'].forEach(id => { $(id).textContent = '…'; $(id).className = ''; });
 
-  const 준비 = DB.init(CONFIG);
+  const 준비 = DB.init(window.CONFIG || {});
   칠하기($('d1'), 준비 ? '되어 있음' : '아직 없음', 준비);
 
   if (!준비){

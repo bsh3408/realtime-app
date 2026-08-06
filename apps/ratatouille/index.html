@@ -1,0 +1,1590 @@
+﻿<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>염기뚜이 — 염기 레스토랑</title>
+<style>
+:root{
+  --bg:#2A211A; --paper:#F7F1E4; --card:#FFFDF7; --ink:#241D16; --soft:#7A6E5E;
+  --line:rgba(36,29,22,.15); --brass:#B08D57; --hi:#F0CE6B;
+  --A:#2F6FB0; --U:#C9892B; --G:#4F8A3D; --C:#C24C5E;
+  --floor:#EFE6D4; --floor2:#E7DCC6; --wall:#3B2F24;
+  --ok:#4F8A3D; --bad:#C24C5E;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+/* 폰 주소창이 늘었다 줄었다 해도 실제 보이는 높이에 맞춘다 */
+@supports (height:100dvh){ html,body{height:100dvh} }
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;
+  display:flex;flex-direction:column;align-items:center;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.mono{font-family:ui-monospace,'D2Coding','Menlo','Consolas',monospace;font-variant-numeric:tabular-nums}
+.app{width:100%;max-width:460px;flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* ══ 화면 전환 ══ */
+.scr{display:none;flex:1;flex-direction:column;min-height:0}
+.scr.on{display:flex}
+
+/* ══ 공통 ══ */
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+button:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
+.big{
+  width:100%;background:var(--brass);color:#fff;
+  padding:15px;font-size:16px;font-weight:800;letter-spacing:-.02em;
+  box-shadow:inset -3px -3px 0 rgba(0,0,0,.28), inset 3px 3px 0 rgba(255,255,255,.3), 0 4px 0 rgba(0,0,0,.35);
+}
+.big:active{transform:translateY(3px);box-shadow:inset -3px -3px 0 rgba(0,0,0,.28), inset 3px 3px 0 rgba(255,255,255,.3), 0 1px 0 rgba(0,0,0,.35)}
+.big.ghost{background:transparent;box-shadow:inset 0 0 0 3px var(--brass);color:var(--paper)}
+.big.ghost:active{transform:none;background:rgba(176,141,87,.2);box-shadow:inset 0 0 0 3px var(--brass)}
+
+/* ══ 문 ══ */
+#gate{justify-content:center;padding:26px 22px}
+.sign{text-align:center;margin-bottom:26px}
+.sign .est{font-size:10.5px;letter-spacing:.34em;color:var(--brass);font-weight:700}
+.sign h1{font-size:42px;line-height:1;letter-spacing:-.04em;color:var(--paper);margin:8px 0 4px;font-weight:800}
+.sign .sub{font-size:13px;color:var(--brass);letter-spacing:.04em}
+.sign .rat{margin:14px auto 0;width:78px}
+#gate input{
+  width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(176,141,87,.5);
+  border-radius:10px;color:var(--paper);font:inherit;font-size:16px;padding:13px;outline:none;margin-bottom:10px;
+}
+#gate input:focus{border-color:var(--hi)}
+#gate input::placeholder{color:rgba(247,241,228,.4)}
+.grow{display:flex;gap:10px}
+.grow input:first-child{max-width:110px}
+#gateMsg{color:#E8896F;font-size:12.5px;min-height:18px;margin-top:6px;font-weight:700;text-align:center}
+
+/* ══ 대기실 ══ */
+#lobby{justify-content:center;padding:26px 22px;text-align:center}
+#lobby h2{color:var(--paper);font-size:23px;letter-spacing:-.03em;margin-bottom:8px}
+#lobby p{color:var(--brass);font-size:13.5px;line-height:1.7;margin-bottom:22px}
+.rules{background:rgba(255,255,255,.06);border:1px solid rgba(176,141,87,.35);border-radius:12px;padding:15px 17px;text-align:left;margin-bottom:20px}
+.rules li{color:var(--paper);font-size:13px;line-height:1.85;margin-left:16px}
+.rules li b{color:var(--hi)}
+.rules li.tx{list-style:none;margin-left:0;margin-top:2px;padding:6px 9px;background:rgba(0,0,0,.28);
+  border-radius:7px;font-family:ui-monospace,'D2Coding','Consolas',monospace;font-size:12px;letter-spacing:.02em}
+
+/* ══ 게임 상단 ══ */
+.hud{
+  background:var(--paper);border-bottom:2px solid var(--wall);
+  padding:7px 10px 8px;flex:none;
+}
+.hudtop{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--soft);font-weight:700;margin-bottom:7px}
+.hudtop .pill{background:var(--wall);color:var(--paper);border-radius:20px;padding:3px 10px;letter-spacing:.04em}
+.hudtop .sp{margin-left:auto}
+.hudtop .plates{color:var(--ink);font-size:14px;font-weight:800}
+
+/* 주문표 */
+.ticket{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 11px;display:flex;gap:10px;align-items:center;min-height:62px}
+.guest{width:42px;height:42px;flex:none;background:var(--floor2);padding:2px;
+  box-shadow:inset 0 0 0 2px var(--wall);image-rendering:pixelated}
+.guest svg{display:block;width:100%;height:100%}
+.tk{flex:1;min-width:0}
+.tk .say{font-size:14px;font-weight:800;letter-spacing:-.02em;line-height:1.35}
+.tk .say .now{color:var(--brass)}
+.tk .prog{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.tk .dish{font-size:10.5px;font-weight:800;padding:2px 7px 2px 3px;border-radius:5px;
+  background:var(--floor2);color:var(--soft);display:inline-flex;align-items:center;gap:3px}
+.tk .dish .pic{width:17px;height:17px;flex:none;image-rendering:pixelated}
+.tk .dish .pic svg{display:block;width:100%;height:100%}
+.tk .dish.done{background:var(--ok);color:#fff}
+.tk .dish.cur{background:var(--wall);color:var(--hi);box-shadow:0 0 0 2px rgba(240,206,107,.4)}
+
+/* 타이머 */
+.timer{height:5px;background:var(--floor2);border-radius:3px;margin-top:8px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--ok);width:100%;transition:width .25s linear}
+.timer.warn i{background:var(--hi)} .timer.danger i{background:var(--bad)}
+
+/* ══ 냄비 ══ */
+.pot{background:var(--wall);padding:6px 10px;display:flex;align-items:center;gap:8px;flex:none;position:relative}
+/* 셰프는 냄비 옆에 서서 요리를 받는다. 뛰어다니는 건 쥐다 */
+.chefstand{width:clamp(30px,8.5vw,38px);flex:none;image-rendering:pixelated;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.4))}
+.chefstand svg{display:block;width:100%;height:100%}
+.chefstand.serve{animation:serve .5s ease-out}
+@keyframes serve{0%{transform:translateY(0)}30%{transform:translateY(-7px) rotate(-6deg)}100%{transform:translateY(0)}}
+.pot .slots{display:flex;gap:5px}
+.pslot{
+  width:clamp(32px,9.5vw,40px);height:clamp(35px,10.5vw,44px);background:rgba(0,0,0,.28);
+  box-shadow:inset 0 0 0 2px rgba(176,141,87,.45);
+  display:flex;align-items:center;justify-content:center;padding:3px;
+}
+.pslot span{display:none}
+.pslot svg{display:block;width:100%;height:100%}
+.pot .msg{margin-left:auto;font-size:11.5px;font-weight:800;text-align:right;line-height:1.35;color:var(--brass)}
+.pot .msg.ok{color:#8FD46A} .pot .msg.bad{color:#FF9E8A}
+
+/* ══ 주방 맵 ══
+   높이·너비 둘 다에 맞춰 줄어들어야 한다.
+   예전에는 너비만 보고 크기가 정해져서, 화면이 짧은 폰에서는
+   맵이 아래를 밀어내 방향키가 화면 밖으로 나가 버렸다. */
+.mapwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:6px;background:var(--wall)}
+/* 크기는 JS(fitMap)가 잰다.
+   CSS 의 aspect-ratio + height:100% 조합은 max-width 가 먹지 않아
+   좁은 폰에서 맵이 가로로 삐져나갔다. */
+.map{
+  display:grid;gap:3px;background:var(--floor);padding:5px;border-radius:10px;
+  box-shadow:inset 0 0 0 3px rgba(0,0,0,.15);
+}
+.cell{
+  min-width:0;min-height:0;background:var(--floor2);
+  display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:inset -1px -1px 0 rgba(0,0,0,.06), inset 1px 1px 0 rgba(255,255,255,.5);
+  cursor:pointer;
+}
+/* 옆 칸을 눌러도 움직인다 — 방향키를 못 찾는 아이가 없도록 */
+.cell.near{box-shadow:inset 0 0 0 2px rgba(176,141,87,.55)}
+.cell.alt{background:var(--floor)}
+.cell .ing{
+  width:88%;height:88%;display:block;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.22));
+}
+.cell .ing svg{display:block;width:100%;height:100%}
+.cell .chef{position:absolute;inset:2%;z-index:2;pointer-events:none}
+.cell .chef svg{display:block;width:100%;height:100%;filter:drop-shadow(0 2px 0 rgba(0,0,0,.3))}
+.cell.pop .ing{animation:pop .22s ease-out}
+@keyframes pop{0%{transform:scale(1)}55%{transform:scale(1.35)}100%{transform:scale(1)}}
+.cell.zap{animation:zap .4s}
+@keyframes zap{0%,100%{background:var(--floor2)}50%{background:#F5C0B6}}
+
+/* 위험 타일 — 테두리 없이 느린 깜빡임만.
+   해골·곰팡이·보라색 U 자체가 이미 눈에 띈다 */
+.cell.haz{animation:hazblink 1.5s ease-in-out infinite}
+@keyframes hazblink{0%,100%{background:var(--floor2)}50%{background:#F3D3CE}}
+.cell.alt.haz{background:var(--floor)}
+
+/* ══ 손님이 화낸다 ══ */
+.guest.angry{animation:angry .7s ease-in-out}
+@keyframes angry{
+  0%,100%{transform:translate(0,0)}
+  15%{transform:translate(-3px,1px)} 30%{transform:translate(3px,-1px)}
+  45%{transform:translate(-3px,0)}   60%{transform:translate(2px,1px)}
+  75%{transform:translate(-2px,0)}
+}
+/* 타이머 위로 튀어오르는 「−8초」 */
+.tk{position:relative}
+.penalty{
+  position:absolute;right:0;top:-4px;z-index:5;pointer-events:none;
+  font-size:17px;font-weight:800;color:var(--bad);letter-spacing:-.03em;
+  text-shadow:0 1px 0 #fff,0 0 6px rgba(255,255,255,.8);
+  animation:penup 1s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes penup{
+  0%{opacity:0;transform:translateY(6px) scale(.7)}
+  18%{opacity:1;transform:translateY(-2px) scale(1.25)}
+  32%{transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-26px) scale(.95)}
+}
+/* 주방 마감 — 셔터가 내려간다 */
+.shutter{
+  position:fixed;inset:0;z-index:88;pointer-events:none;
+  background:repeating-linear-gradient(180deg,#2A211A 0 7px,#1B140F 7px 14px);
+  transform:translateY(-100%);
+}
+.shutter.on{animation:shut 1.15s cubic-bezier(.5,0,.3,1) forwards}
+@keyframes shut{
+  0%{transform:translateY(-100%)} 34%{transform:translateY(0)}
+  66%{transform:translateY(0)} 100%{transform:translateY(-100%)}
+}
+.shutter .word{
+  position:absolute;left:0;right:0;top:44%;text-align:center;
+  color:var(--hi);font-size:22px;font-weight:800;letter-spacing:.06em;opacity:0;
+}
+.shutter.on .word{animation:shutword 1.15s ease forwards}
+@keyframes shutword{0%,28%{opacity:0}40%,62%{opacity:1}80%,100%{opacity:0}}
+
+/* ══ 큰 알림 — 냄비 옆 작은 글씨로는 아무도 못 읽는다 ══ */
+.mapwrap{position:relative}
+.toast{
+  position:absolute;left:6px;right:6px;top:34%;z-index:30;
+  pointer-events:none;text-align:center;display:none;
+}
+.toast.on{display:block;animation:toastin .32s cubic-bezier(.22,1,.36,1)}
+@keyframes toastin{0%{opacity:0;transform:translateY(14px) scale(.9)}100%{opacity:1;transform:none}}
+.toast .box{
+  display:inline-block;max-width:100%;
+  background:rgba(24,16,12,.95);border:3px solid var(--bad);border-radius:14px;
+  padding:13px 16px;color:#FFE2DA;line-height:1.45;
+  box-shadow:0 8px 26px rgba(0,0,0,.6);
+}
+.toast .big1{font-size:clamp(19px,5.4vw,26px);font-weight:800;letter-spacing:-.03em;display:block}
+.toast .big1 .cd{font-family:ui-monospace,'D2Coding',monospace;color:var(--hi);letter-spacing:.04em}
+.toast .sub{font-size:clamp(13px,3.6vw,16px);font-weight:800;color:#FFB3A2;margin-top:6px;display:block}
+.toast.ok .box{border-color:var(--ok);color:#DFF5D0}
+.toast.ok .sub{color:#8FD46A}
+.toast.warn .box{border-color:var(--hi);color:#FFF0CF}
+.toast.warn .sub{color:var(--hi)}
+
+/* 완성한 요리가 냄비에서 손님에게 날아간다 */
+.fly{
+  position:fixed;z-index:60;width:46px;height:46px;pointer-events:none;
+  image-rendering:pixelated;filter:drop-shadow(0 3px 0 rgba(0,0,0,.35));
+}
+.fly svg{display:block;width:100%;height:100%}
+
+/* ══ 실패 연출 ══ */
+@keyframes shake{
+  0%,100%{transform:translate(0,0) rotate(0)}
+  8%  {transform:translate(-9px,2px) rotate(-.5deg)}
+  20% {transform:translate(8px,-2px) rotate(.5deg)}
+  32% {transform:translate(-7px,1px) rotate(-.4deg)}
+  44% {transform:translate(6px,-1px) rotate(.4deg)}
+  58% {transform:translate(-4px,1px) rotate(-.25deg)}
+  72% {transform:translate(3px,0) rotate(.2deg)}
+  86% {transform:translate(-2px,0) rotate(0)}
+}
+.app.shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97)}
+.flash{
+  position:fixed;inset:0;pointer-events:none;z-index:90;opacity:0;
+  background:radial-gradient(ellipse at center,transparent 38%,rgba(194,76,94,.62) 100%);
+  transition:opacity .3s ease-out;
+}
+.flash.on{opacity:1;transition:none}
+@media(prefers-reduced-motion:reduce){
+  .app.shake{animation:none}
+  *{animation-duration:.01ms!important}
+}
+
+/* ══ 조작부 — 무슨 일이 있어도 화면 안에 있어야 한다 ══ */
+.ctrl{
+  flex:none;padding:7px 10px calc(9px + env(safe-area-inset-bottom));
+  background:var(--wall);display:flex;align-items:center;gap:10px;
+  position:sticky;bottom:0;z-index:5;
+}
+.dpad{
+  display:grid;flex:none;
+  grid-template-columns:repeat(3,clamp(42px,13.5vw,54px));
+  grid-template-rows:repeat(3,clamp(34px,10vw,44px));gap:4px;
+}
+.dpad button{
+  background:#6E5F4C;color:var(--paper);
+  font-size:clamp(15px,4.6vw,19px);font-weight:800;display:flex;align-items:center;justify-content:center;
+  box-shadow:inset -3px -3px 0 rgba(0,0,0,.35), inset 3px 3px 0 rgba(255,255,255,.22);
+}
+.dpad button:active{background:var(--hi);color:var(--wall);
+  box-shadow:inset 3px 3px 0 rgba(0,0,0,.3), inset -3px -3px 0 rgba(255,255,255,.25)}
+.dpad .sp{visibility:hidden}
+.side{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.side button{
+  background:rgba(255,255,255,.09);border:1px solid rgba(176,141,87,.4);border-radius:9px;
+  color:var(--paper);font-size:clamp(11px,3.3vw,12.5px);font-weight:800;padding:clamp(8px,2.4vw,11px) 6px;
+}
+.side button:active{background:rgba(176,141,87,.3)}
+.side .drop{color:#FF9E8A}
+
+/* ══ 메뉴판 ══ */
+.sheet{position:fixed;inset:0;z-index:80;background:rgba(20,15,11,.72);display:none;align-items:flex-end}
+.sheet.on{display:flex}
+.sheetbox{background:var(--paper);width:100%;max-height:82vh;border-radius:16px 16px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
+.sheetbox h3{font-size:17px;letter-spacing:-.03em;margin-bottom:3px}
+.sheetbox .warn{font-size:11.5px;color:var(--bad);font-weight:700;margin-bottom:12px}
+.mlist{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+.mrow{display:flex;gap:7px;align-items:flex-start;padding:6px 2px;border-bottom:1px dotted var(--line)}
+.mrow .dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px}
+.mrow .nm{font-size:12.5px;font-weight:800;line-height:1.2}
+.mrow .cd{font-family:ui-monospace,monospace;font-size:9px;color:var(--soft);line-height:1.45;word-spacing:2px}
+
+/* ══ 결과 ══ */
+#done{justify-content:center;padding:26px 22px;text-align:center}
+#done .rat{width:88px;margin:0 auto 14px}
+#done h2{color:var(--paper);font-size:26px;letter-spacing:-.03em;margin-bottom:6px}
+.score{background:rgba(255,255,255,.07);border:1px solid rgba(176,141,87,.4);border-radius:14px;padding:20px;margin:18px 0}
+.score .n{font-size:52px;font-weight:800;color:var(--hi);line-height:1}
+.score .l{font-size:12.5px;color:var(--brass);font-weight:700;margin-top:4px}
+.reward{display:flex;align-items:center;justify-content:center;gap:9px;background:rgba(79,138,61,.2);border:1px solid var(--ok);border-radius:10px;padding:13px;margin-bottom:16px}
+.reward .amt{font-size:24px;font-weight:800;color:#8FD46A}
+.reward .nm{font-size:13px;color:var(--paper);font-weight:700;text-align:left;line-height:1.35}
+.stat{display:flex;justify-content:space-between;font-size:12.5px;color:var(--brass);padding:6px 2px;border-bottom:1px solid rgba(176,141,87,.2)}
+.stat b{color:var(--paper)}
+
+/* ══ 랭킹 ══ */
+.mini{background:rgba(255,255,255,.06);border:1px solid rgba(176,141,87,.35);border-radius:12px;padding:12px 14px;margin-bottom:18px;text-align:left}
+.mini h4{font-size:11px;letter-spacing:.14em;color:var(--brass);font-weight:800;margin-bottom:8px}
+.mini .row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--paper);padding:3px 0}
+.mini .row .no{width:17px;flex:none;color:var(--brass);font-weight:800;text-align:right}
+.mini .row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.mini .row .pt{font-weight:800;color:var(--hi)}
+.mini .row.me{background:rgba(240,206,107,.14);border-radius:6px;margin:0 -5px;padding:3px 5px}
+.mini .none{font-size:12px;color:var(--soft)}
+.myrank{background:rgba(240,206,107,.12);border:1px solid var(--brass);border-radius:10px;padding:11px;margin-bottom:14px;font-size:13px;color:var(--paper);font-weight:700}
+.myrank b{color:var(--hi);font-size:20px}
+
+/* ══ 대기 — 선생님이 시작을 누를 때까지 ══ */
+.wait{
+  background:rgba(255,255,255,.06);border:1px solid rgba(176,141,87,.4);border-radius:14px;
+  padding:20px 16px;margin-bottom:18px;
+}
+.wait .dot{
+  display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);
+  margin-right:7px;vertical-align:middle;animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.wait .st{font-size:17px;font-weight:800;color:var(--paper);letter-spacing:-.03em}
+.wait .sub2{font-size:12.5px;color:var(--brass);margin-top:7px;line-height:1.6}
+.wait.go{background:rgba(79,138,61,.22);border-color:var(--ok)}
+.wait.go .st{color:#8FD46A}
+.wait.off .dot{background:var(--soft);animation:none}
+.left{font-family:ui-monospace,'D2Coding',monospace;font-variant-numeric:tabular-nums;
+  font-size:30px;font-weight:800;color:var(--hi);letter-spacing:-.03em;margin-top:8px}
+.hudtop .clk{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;
+  font-weight:800;color:var(--ink)}
+.hudtop .clk.low{color:var(--bad)}
+</style>
+
+<div class="app">
+
+<!-- ═════ 문 ═════ -->
+<div class="scr on" id="gate">
+  <div class="sign">
+    <div class="est">EST. 1961 · THE GENETIC CODE</div>
+    <h1>염기뚜이</h1>
+    <div class="sub">염기 레스토랑 주방 &middot; 견습 셰프 모집</div>
+    <div class="rat" id="ratGate"></div>
+  </div>
+  <div class="grow">
+    <input type="text" id="gName" placeholder="이름" autocomplete="off">
+  </div>
+  <button class="big" id="gGo">입장</button>
+  <div id="gateMsg"></div>
+</div>
+
+<!-- ═════ 대기실 ═════ -->
+<div class="scr" id="lobby">
+  <h2 id="hello">준비됐다, 셰프</h2>
+  <div class="wait" id="waitBox">
+    <div><span class="dot"></span><span class="st" id="waitSt">선생님을 기다리는 중</span></div>
+    <div class="sub2" id="waitSub">선생님이 <b>시작</b>을 누르면 모두 함께 영업을 시작한다.</div>
+    <div class="left" id="waitLeft" style="display:none"></div>
+  </div>
+  <div class="rules">
+    <ul>
+      <li>손님이 <b>음식 이름</b>으로 주문한다</li>
+      <li><b>메뉴판</b>에서 그 음식의 <b>코돈</b>을 찾아라</li>
+      <li>주방 바닥은 <b>DNA</b>다. 찾은 코돈을 <b>DNA로 되돌려</b> 밟아라</li>
+      <li class="tx"><b>A&rarr;T &nbsp; U&rarr;A &nbsp; G&rarr;C &nbsp; C&rarr;G</b> &nbsp; 예) AUG &rarr; <b>TAC</b></li>
+      <li>움직이는 법은 셋 — <b>방향키 · 옆 칸 누르기 · 쓸어넘기기</b></li>
+      <li><b>지나가는 칸의 염기도 냄비에 들어간다.</b> 길을 돌아서 가라</li>
+      <li>같은 음식이라도 <b>코돈은 여러 개</b>다. 아무거나 맞으면 된다</li>
+      <li>틀린 요리를 내면 손님이 <b>화내고 시간이 깎인다</b></li>
+      <li><b>해골 · 곰팡이 · 보라색 U</b>는 밟지 마라. 시간이 깎인다</li>
+    </ul>
+  </div>
+  <div class="mini" id="lobbyRank" style="display:none">
+    <h4>지금 순위</h4>
+    <div id="lobbyRankList"></div>
+  </div>
+  <button class="big ghost" id="startBtn">혼자 연습하기</button>
+</div>
+
+<!-- ═════ 게임 ═════ -->
+<div class="scr" id="play">
+  <div class="hud">
+    <div class="hudtop">
+      <span class="pill" id="whoPill">—</span>
+      <span id="orderNo">손님 1</span>
+      <span class="sp clk" id="clk">5:00</span>
+      <span class="plates"><span id="plates">0</span>접시</span>
+    </div>
+    <div class="ticket">
+      <div class="guest" id="guestFace">🧑</div>
+      <div class="tk">
+        <div class="say" id="saySay">—</div>
+        <div class="prog" id="prog"></div>
+      </div>
+    </div>
+    <div class="timer" id="timerBar"><i id="timerFill"></i></div>
+  </div>
+
+  <div class="pot">
+    <span class="chefstand" id="chefStand"></span>
+    <div class="slots" id="potSlots"></div>
+    <div class="msg" id="potMsg">메뉴판을 보고 염기를 밟아라</div>
+  </div>
+
+  <div class="mapwrap">
+    <div class="map" id="map"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="ctrl">
+    <div class="dpad">
+      <span class="sp"></span><button data-d="u" aria-label="위">▲</button><span class="sp"></span>
+      <button data-d="l" aria-label="왼쪽">◀</button><span class="sp"></span><button data-d="r" aria-label="오른쪽">▶</button>
+      <span class="sp"></span><button data-d="d" aria-label="아래">▼</button><span class="sp"></span>
+    </div>
+    <div class="side">
+      <button id="menuBtn">📖 메뉴판</button>
+      <button id="dropBtn" class="drop">🗑 냄비 비우기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════ 결과 ═════ -->
+<div class="scr" id="done">
+  <div class="rat" id="ratDone"></div>
+  <h2>영업 종료</h2>
+  <div class="score"><div class="n" id="fPlates">0</div><div class="l">완성한 접시</div></div>
+  <div class="myrank" id="myRank" style="display:none"></div>
+  <div class="stat"><span>손님 응대</span><b><span id="fGuests">0</span>팀</b></div>
+  <div class="stat"><span>잘못 낸 요리</span><b><span id="fWrong">0</span>접시</b></div>
+  <div class="stat"><span>변이 습격</span><b><span id="fZap">0</span>회</b></div>
+  <div class="stat"><span>서로 다른 주문서</span><b><span id="fUniq">0</span>가지</b></div>
+  <p style="color:var(--brass);font-size:12px;margin-top:14px;line-height:1.7" id="doneNote"></p>
+  <button class="big" id="againBtn" style="margin-top:16px">한 판 더</button>
+</div>
+
+</div>
+
+<div class="flash" id="flash"></div>
+<div class="shutter" id="shutter"><div class="word">주방 마감</div></div>
+
+<!-- 메뉴판 -->
+<div class="sheet" id="sheet">
+  <div class="sheetbox">
+    <h3>염기 레스토랑 메뉴판</h3>
+    <div class="warn">보는 동안에도 시간은 간다</div>
+    <div class="mlist" id="mlist"></div>
+    <button class="big" id="sheetClose" style="margin-top:14px;background:var(--wall)">닫기</button>
+  </div>
+</div>
+
+<script>window.활동이름 = 'ratatouille';</script>
+<script src="../../shared/config.js"></script>
+<script src="../../shared/db.js"></script>
+<script src="../../shared/compat.js"></script>
+<script>DB.init(window.CONFIG || {});</script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+/* ═══════ 메뉴 · 코돈표 ═══════ */
+const FOOD = {
+  Phe:{ko:'페퍼로니 피자',aa:'페닐알라닌',c:'#C24C5E'}, Leu:{ko:'라면',aa:'류신',c:'#D8743A'},
+  Ser:{ko:'샐러드',aa:'세린',c:'#E0A52E'},               Tyr:{ko:'타코',aa:'티로신',c:'#A98F2C'},
+  Cys:{ko:'치즈버거',aa:'시스테인',c:'#7FA03A'},          Trp:{ko:'떡볶이',aa:'트립토판',c:'#4F8A3D'},
+  Pro:{ko:'크림 파스타',aa:'프롤린',c:'#3E9576'},         His:{ko:'핫도그',aa:'히스티딘',c:'#2E9AA0'},
+  Gln:{ko:'김밥',aa:'글루타민',c:'#3186B0'},             Arg:{ko:'비빔밥',aa:'아르기닌',c:'#2F6FB0'},
+  Ile:{ko:'아이스크림',aa:'이소류신',c:'#5A6BC0'},      Met:{ko:'왕만두',aa:'메티오닌',c:'#7A5BBE'},
+  Thr:{ko:'버터 토스트',aa:'트레오닌',c:'#9A55B0'},       Asn:{ko:'나초',aa:'아스파라긴',c:'#B94FA0'},
+  Lys:{ko:'카레라이스',aa:'라이신',c:'#C24C84'},          Val:{ko:'와플',aa:'발린',c:'#8C7355'},
+  Ala:{ko:'에그타르트',aa:'알라닌',c:'#A98B5E'},          Asp:{ko:'도넛',aa:'아스파르트산',c:'#6E8E8A'},
+  Glu:{ko:'감자튀김',aa:'글루탐산',c:'#5E7C99'},          Gly:{ko:'치즈 그라탕',aa:'글리신',c:'#8A8A82'},
+  Stop:{ko:'주방 마감',aa:'종결',c:'#3A332B'}
+};
+const CODE = {
+ UUU:'Phe',UUC:'Phe',UUA:'Leu',UUG:'Leu', CUU:'Leu',CUC:'Leu',CUA:'Leu',CUG:'Leu',
+ AUU:'Ile',AUC:'Ile',AUA:'Ile',AUG:'Met', GUU:'Val',GUC:'Val',GUA:'Val',GUG:'Val',
+ UCU:'Ser',UCC:'Ser',UCA:'Ser',UCG:'Ser', CCU:'Pro',CCC:'Pro',CCA:'Pro',CCG:'Pro',
+ ACU:'Thr',ACC:'Thr',ACA:'Thr',ACG:'Thr', GCU:'Ala',GCC:'Ala',GCA:'Ala',GCG:'Ala',
+ UAU:'Tyr',UAC:'Tyr',UAA:'Stop',UAG:'Stop', CAU:'His',CAC:'His',CAA:'Gln',CAG:'Gln',
+ AAU:'Asn',AAC:'Asn',AAA:'Lys',AAG:'Lys', GAU:'Asp',GAC:'Asp',GAA:'Glu',GAG:'Glu',
+ UGU:'Cys',UGC:'Cys',UGA:'Stop',UGG:'Trp', CGU:'Arg',CGC:'Arg',CGA:'Arg',CGG:'Arg',
+ AGU:'Ser',AGC:'Ser',AGA:'Arg',AGG:'Arg', GGU:'Gly',GGC:'Gly',GGA:'Gly',GGG:'Gly'
+};
+/* 음식 → 그 음식을 만드는 코돈 전부 */
+const BYDISH = {};
+for (const c in CODE){ (BYDISH[CODE[c]] = BYDISH[CODE[c]] || []).push(c); }
+/* 주문에 쓸 음식 (주방 마감·왕만두 제외 — 왕만두는 개시 신호라 따로 다룬다) */
+const MENU = Object.keys(BYDISH).filter(k => k !== 'Stop' && k !== 'Met');
+
+/* ═══════════════════════════════════════════════════
+   조절 상수 — 수업 전에 여기 숫자만 고치면 된다
+   («배포 관리 → 연필 → 새 버전» 으로 다시 배포)
+   ═══════════════════════════════════════════════════ */
+const TUNE = {
+  ROUND_SEC:      300,   // 한 판 영업 시간
+  DISH_SEC_START:  26,   // 첫 손님 접시당 초   ← 아이들이 너무 잘해서 조였다
+  DISH_SEC_STEP:  2.5,   // 손님마다 줄어드는 초
+  DISH_SEC_MIN:    13,   // 접시당 하한
+  FICKLE_FROM:      3,   // 몇 번째 손님부터 마음을 바꾸나
+  FICKLE_ODDS:    .45,   // 그 뒤로 마음을 바꿀 확률
+  PEN_WRONG:     0.25,   // 다른 요리 — 접시당 시간의 비율
+  PEN_STOP:      0.40,   // 주방 마감 코돈
+  PEN_MIN_SEC:      3,   // 비례 차감 하한
+  HAZ_U_SEC:        3,   // U 타일 (냄비도 쏟긴다)
+  HAZ_POISON_SEC:  10,   // 독약
+  HAZ_ROT_SEC:      5,   // 상한 재료
+  REPORT_SEC:      30,   // 랭킹 보고 주기
+  WAIT_POLL_SEC:    4,   // 대기실에서 «시작» 신호를 확인하는 주기
+  SYNC_SEC:        10    // 게임 중에 «끝내기·새 판»을 확인하는 주기
+};
+
+/* 주방 바닥은 DNA다 */
+const BASES = ['A','T','G','C'];
+/* 전사 — 학습지 (다)-1 그대로. 그대로 옮기는 게 아니라 짝을 맞춘다 */
+const TX = { A:'U', T:'A', G:'C', C:'G' };
+const 전사 = dna => [...dna].map(b => TX[b]).join('');
+
+/* 위험 타일 — 재료가 아닌 것들 */
+const HAZ = {
+  U:      { sec: TUNE.HAZ_U_SEC,      spill:true,
+            msg:'U는 RNA 염기다. 이 주방엔 없다' },
+  POISON: { sec: TUNE.HAZ_POISON_SEC, spill:false, msg:'독약을 밟았다' },
+  ROT:    { sec: TUNE.HAZ_ROT_SEC,    spill:false, msg:'상한 재료다' }
+};
+/* 손님이 뒤로 갈수록 늘어난다. 1번 손님에게만 아무것도 깔지 않는다.
+   U 를 넉넉히 깔아 헷갈리게 한다 — 「T 자리에 U」 오개념을 잡는 함정이다 */
+function hazPlan(n){
+  if (n <= 1) return {};
+  if (n <= 3) return { U:2, POISON:1 };
+  if (n <= 5) return { U:3, POISON:1, ROT:1 };
+  if (n <= 8) return { U:4, POISON:2, ROT:1 };
+  return { U:5, POISON:2, ROT:2 };
+}
+
+/* ═══════════════════════════════════════════════════
+   도트 스프라이트 — 24×24
+   도형으로 그린 뒤 광원(왼쪽 위)에 맞춰 음영과 외곽선을
+   자동 계산한다. 모양을 고치려면 아래 ell/rct 값만 바꾸면
+   되고, 음영은 알아서 따라온다.
+   ═══════════════════════════════════════════════════ */
+const SZ = 24, EMPTY = '.';
+const newGrid = () => Array.from({length:SZ}, () => Array(SZ).fill(EMPTY));
+const px = (g,x,y) => (y<0||y>=SZ||x<0||x>=SZ) ? EMPTY : g[y][x];
+
+function ell(g, cx, cy, rx, ry, ch, only){
+  for (let y=0;y<SZ;y++) for (let x=0;x<SZ;x++){
+    const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry;
+    if (dx*dx+dy*dy<=1 && (!only || g[y][x]===only)) g[y][x]=ch;
+  }
+}
+function rct(g, x0, y0, x1, y1, ch, only){
+  for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++)
+    if (y>=0&&y<SZ&&x>=0&&x<SZ && (!only || g[y][x]===only)) g[y][x]=ch;
+}
+/* 아래·오른쪽 가장자리는 그늘, 위·왼쪽은 빛 */
+function shade(g, base, light, dark, body){
+  const s = g.map(r=>r.slice());
+  for (let y=0;y<SZ;y++) for (let x=0;x<SZ;x++){
+    if (s[y][x]!==base) continue;
+    const edge=(dx,dy)=>!body.includes(px(s,x+dx,y+dy));
+    if (edge(1,1)||edge(2,1)||edge(1,2)) g[y][x]=dark;
+    else if (edge(-2,-1)||edge(-1,-2)) g[y][x]=light;
+  }
+}
+/* 바깥과 맞닿은 픽셀을 외곽선으로 */
+function outline(g, fills, ch){
+  const s = g.map(r=>r.slice());
+  for (let y=0;y<SZ;y++) for (let x=0;x<SZ;x++){
+    if (!fills.includes(s[y][x])) continue;
+    if ([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>!fills.includes(px(s,x+dx,y+dy)))) g[y][x]=ch;
+  }
+}
+/* 격자 → SVG (가로로 같은 색은 한 덩어리로) */
+function toSVG(g, pal){
+  let out='';
+  for (let y=0;y<SZ;y++){
+    let x=0;
+    while (x<SZ){
+      const ch=g[y][x];
+      if (!pal[ch]){ x++; continue; }
+      let run=1;
+      while (x+run<SZ && g[y][x+run]===ch) run++;
+      out += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${pal[ch]}"/>`;
+      x += run;
+    }
+  }
+  return `<svg viewBox="0 0 ${SZ} ${SZ}" shape-rendering="crispEdges" aria-hidden="true">${out}</svg>`;
+}
+
+/* ── 쥐 셰프 ── */
+function makeRat(){
+  const g = newGrid(), BODY = ['1','2','3'];
+  ell(g, 5.5, 8.5, 3.6, 3.6, '2');            // 귀
+  ell(g, 18.5, 8.5, 3.6, 3.6, '2');
+  ell(g, 12, 19, 6.4, 4.6, '2');              // 몸
+  ell(g, 12, 13, 7.6, 6.6, '2');              // 머리
+  shade(g, '2', '1', '3', BODY);
+  ell(g, 5.6, 8.6, 1.9, 1.9, 'e');            // 귀 안쪽
+  ell(g, 18.4, 8.6, 1.9, 1.9, 'e');
+  ell(g, 6.1, 9.1, 1.1, 1.1, 'E');
+  ell(g, 18.9, 9.1, 1.1, 1.1, 'E');
+  ell(g, 12, 5.2, 5.2, 3.4, 'h');             // 요리사 모자
+  ell(g, 8.2, 6.2, 3.0, 2.6, 'h');
+  ell(g, 15.8, 6.2, 3.0, 2.6, 'h');
+  rct(g, 6, 7, 17, 8, 'H');
+  shade(g, 'h', 'h', 'H', ['h','H']);
+  ell(g, 9.2, 13.4, 1.6, 1.8, 'y');           // 눈
+  ell(g, 14.8, 13.4, 1.6, 1.8, 'y');
+  rct(g, 8, 12, 8, 12, 'w'); rct(g, 14, 12, 14, 12, 'w');
+  ell(g, 12, 16.2, 1.5, 1.1, 'n');            // 코
+  ell(g, 6.6, 16.2, 1.6, 1.1, 'b');           // 볼
+  ell(g, 17.4, 16.2, 1.6, 1.1, 'b');
+  ell(g, 18.4, 21.4, 2.6, 2.2, 't', EMPTY);   // 꼬리
+  ell(g, 20.8, 20.4, 2.4, 2.2, 't', EMPTY);
+  ell(g, 22.2, 18.2, 2.1, 2.3, 't', EMPTY);
+  outline(g, ['1','2','3','e','E','y','w','n','b','h','H','t'], 'o');
+  ell(g, 9.2, 13.4, 1.3, 1.5, 'y');           // 외곽선이 먹은 눈 되살리기
+  ell(g, 14.8, 13.4, 1.3, 1.5, 'y');
+  rct(g, 8, 12, 8, 12, 'w'); rct(g, 14, 12, 14, 12, 'w');
+  return g;
+}
+const RAT_SVG = toSVG(makeRat(), {
+  o:'#4A3E33', '1':'#DCD5CB', '2':'#BDB4A8', '3':'#968C7F',
+  h:'#FFFFFF', H:'#E2DCD1', e:'#F2B9C2', E:'#DB97A4',
+  y:'#2B2320', w:'#FFFFFF', n:'#E5808F', b:'#F6C3CA', t:'#A79C90'
+});
+const ratSVG = () => RAT_SVG;
+
+/* ── 셰프 ──
+   맵 위를 뛰어다니는 것은 «쥐»이고, 셰프는 냄비 옆에 서서 요리를 받는다.
+   그래서 여기 셰프는 모자에 쥐를 얹지 않는다. */
+function makeChef(withRat){
+  const g = newGrid();
+  ell(g, 12, 21.6, 6.8, 3.6, 's');            // 어깨 — 조리복
+  shade(g, 's', 'S', 'D', ['s','S','D']);
+  ell(g, 12, 15.6, 5.0, 4.6, '2');            // 얼굴
+  shade(g, '2', '1', '3', ['1','2','3']);
+  rct(g, 6, 10, 17, 11, 'H');                 // 모자 띠
+  ell(g, 12, 8.2, 5.8, 3.2, 'h');             // 부풀린 모자
+  ell(g, 7.8, 8.8, 2.8, 2.4, 'h');
+  ell(g, 16.2, 8.8, 2.8, 2.4, 'h');
+  shade(g, 'h', 'h', 'H', ['h','H']);
+  if (withRat){                               // 쓰지 않지만 남겨 둔다
+    ell(g,  8.9, 3.0, 1.8, 1.8, 'r');
+    ell(g, 15.1, 3.0, 1.8, 1.8, 'r');
+    ell(g, 12, 5.4, 3.2, 2.7, 'r');
+    shade(g, 'r', 'R', 'K', ['r','R','K']);
+    ell(g,  8.9, 3.1, 0.9, 0.9, 'e');
+    ell(g, 15.1, 3.1, 0.9, 0.9, 'e');
+  }
+  ell(g, 10.0, 15.3, 1.1, 1.4, 'y');          // 셰프 눈
+  ell(g, 14.0, 15.3, 1.1, 1.4, 'y');
+  ell(g, 12, 17.9, 1.4, 0.9, 'm');            // 입
+  outline(g, ['1','2','3','h','H','r','R','K','e','y','m','s','S','D'], 'o');
+  if (withRat){
+    ell(g, 12, 5.4, 2.6, 2.1, 'r');
+    rct(g, 10, 5, 10, 5, 'k'); rct(g, 14, 5, 14, 5, 'k');
+  }
+  ell(g, 10.0, 15.3, 0.9, 1.2, 'y');          // 외곽선이 먹은 눈 되살리기
+  ell(g, 14.0, 15.3, 0.9, 1.2, 'y');
+  return g;
+}
+const CHEF_SVG = toSVG(makeChef(false), {
+  o:'#4A3E33', '1':'#FBE0C4', '2':'#F2C9A4', '3':'#D9A87E',
+  h:'#FFFFFF', H:'#E2DCD1',
+  r:'#BDB4A8', R:'#DCD5CB', K:'#968C7F', k:'#2B2320', e:'#F2B9C2',
+  y:'#2B2320', m:'#B5615F',
+  s:'#F4F0E6', S:'#FFFFFF', D:'#D3CCBD'
+});
+
+/* ── 손님 ──
+   angry 를 주면 눈썹이 내려앉고 입이 아래로 굽는다.
+   같은 얼굴이라 누구인지는 알아보되, 표정만 바뀐다. */
+function makeGuest(hair, angry){
+  const g = newGrid();
+  ell(g, 12, 17.5, 6.2, 4.4, 's');
+  shade(g, 's', 'S', 'D', ['s','S','D']);
+  ell(g, 12, 10.5, 6.4, 6.4, '2');
+  shade(g, '2', '1', '3', ['1','2','3']);
+  if (hair===0){ ell(g,12,8.4,6.8,5.4,'k'); ell(g,12,11.6,5.0,3.4,'2','k'); }
+  if (hair===1){ ell(g,12,7.6,6.9,4.6,'k'); ell(g,12,10.4,5.2,3.0,'2','k');
+                 rct(g,5,8,6,14,'k'); rct(g,17,8,18,14,'k'); }
+  if (hair===2){ ell(g,12,8.0,6.9,5.0,'k'); ell(g,13.6,10.6,4.6,3.2,'2','k'); }
+  if (hair===3){ ell(g,12,7.8,6.9,4.4,'k'); ell(g,12,10.2,5.4,2.8,'2','k');
+                 ell(g,5.4,6.2,2.0,2.0,'k'); ell(g,18.6,6.2,2.0,2.0,'k'); }
+  ell(g, 9.6, 11.2, 1.2, 1.5, 'y');
+  ell(g, 14.4, 11.2, 1.2, 1.5, 'y');
+  if (angry){
+    ell(g, 12, 14.6, 1.9, 1.2, 'm');          // 입이 아래로 굽는다
+    ell(g, 12, 15.6, 2.2, 1.2, '2', 'm');
+  } else {
+    ell(g, 12, 13.6, 1.4, 1.0, 'm');
+  }
+  ell(g, 7.4, 13.0, 1.4, 1.0, 'b');
+  ell(g, 16.6, 13.0, 1.4, 1.0, 'b');
+  outline(g, ['1','2','3','k','y','m','b','s','S','D'], 'o');
+  ell(g, 9.6, 11.2, 1.0, 1.3, 'y');
+  ell(g, 14.4, 11.2, 1.0, 1.3, 'y');
+  if (angry){
+    /* 눈썹은 맨 마지막에 얹는다.
+       머리카락 속에 그리면 색이 거의 같아 보이지 않고,
+       외곽선에도 먹힌다. 눈을 살짝 덮어야 노려보는 얼굴이 된다. */
+    rct(g,  7,  9,  9,  9, 'y'); rct(g,  9, 10, 11, 10, 'y');   // 왼쪽 — 안쪽이 내려온다
+    rct(g, 15,  9, 17,  9, 'y'); rct(g, 13, 10, 15, 10, 'y');   // 오른쪽
+  }
+  return g;
+}
+const GUEST_PALS = [
+  {o:'#4A3E33','1':'#FBE0C4','2':'#F2C9A4','3':'#D9A87E',k:'#3B2F24',y:'#2B2320',m:'#B5615F',b:'#F3B0A8',s:'#D2596B',S:'#E27F8D',D:'#A8394A'},
+  {o:'#4A3E33','1':'#FDE7D2','2':'#F5D5B4','3':'#DDB68E',k:'#7A5230',y:'#2B2320',m:'#B5615F',b:'#F3B0A8',s:'#3C7FBF',S:'#5C9BD4',D:'#265A8C'},
+  {o:'#4A3E33','1':'#F0CFAA','2':'#E0B48C','3':'#C0906A',k:'#241D16',y:'#2B2320',m:'#B5615F',b:'#E6A093',s:'#5C9A46',S:'#7CB765',D:'#3F7030'},
+  {o:'#4A3E33','1':'#FBE0C4','2':'#F2C9A4','3':'#D9A87E',k:'#B4643C',y:'#2B2320',m:'#B5615F',b:'#F3B0A8',s:'#D69B2E',S:'#EAB54D',D:'#A87218'}
+];
+/* 화났을 때는 얼굴도 붉게 달아오른다 */
+const flush = p => Object.assign({}, p, {
+  '1':'#FFD2C2', '2':'#F7B49E', '3':'#DE8E76', b:'#E8705C'
+});
+const GUEST_SVG       = GUEST_PALS.map((p,i) => toSVG(makeGuest(i, false), p));
+const GUEST_ANGRY_SVG = GUEST_PALS.map((p,i) => toSVG(makeGuest(i, true), flush(p)));
+
+/* ── 재료 (9×12 도트 글자) ── */
+const GLYPH = {
+  A:['...111...','..11111..','.11...11.','11.....11','11.....11','111111111',
+     '111111111','11.....11','11.....11','11.....11','11.....11','11.....11'],
+  T:['111111111','111111111','...111...','...111...','...111...','...111...',
+     '...111...','...111...','...111...','...111...','...111...','...111...'],
+  U:['11.....11','11.....11','11.....11','11.....11','11.....11','11.....11',
+     '11.....11','11.....11','.11...11.','.11...11.','..11111..','...111...'],
+  G:['..11111..','.11...11.','11.....11','11.......','11.......','11..11111',
+     '11..11111','11.....11','11.....11','.11...11.','..11111..','...111...'],
+  C:['..11111..','.11...11.','11.....11','11.......','11.......','11.......',
+     '11.......','11.....11','11.....11','.11...11.','..11111..','...111...']
+};
+const ING_HUE = {
+  A:{o:'#123A5E','1':'#6BA5DC','2':'#3F7FC0','3':'#245F97',L:'#FFFFFF'},
+  T:{o:'#6B4410','1':'#EFBA6E','2':'#D2932F','3':'#A76F1B',L:'#FFFFFF'},
+  G:{o:'#26471C','1':'#88C072','2':'#5A9A45','3':'#3C752D',L:'#FFFFFF'},
+  C:{o:'#6E2331','1':'#E88C99','2':'#CC5568','3':'#A23A4C',L:'#FFFFFF'},
+  /* U — 재료가 아니다. 시체 같은 회보라로 칠해 한눈에 구분되게 한다 */
+  U:{o:'#2E2436','1':'#9F92AD','2':'#7A6A8C','3':'#584A69',L:'#EDE4F5'}
+};
+/* 염기 토큰 — 둥근 알에 도트 글자를 박는다 */
+function makeToken(letter){
+  const g = newGrid();
+  ell(g, 12, 12, 10.5, 10.5, '2');
+  shade(g, '2', '1', '3', ['1','2','3']);
+  outline(g, ['1','2','3'], 'o');
+  rct(g, 6, 5, 8, 5, '1'); rct(g, 5, 6, 6, 7, '1');      // 반짝임
+  const gl = GLYPH[letter];
+  for (let y=0;y<12;y++) for (let x=0;x<9;x++) if (gl[y][x]==='1') g[6+y][8+x]='L';
+  return g;
+}
+const ING_SVG = {};
+for (const b of ['A','T','G','C','U']) ING_SVG[b] = toSVG(makeToken(b), ING_HUE[b]);
+
+/* ── 독약 — 해골 ── */
+function makePoison(){
+  const g = newGrid();
+  ell(g, 12, 11.5, 6.6, 6.0, '2');            // 두개골
+  rct(g, 9, 16, 14, 19, '2');                 // 턱
+  ell(g, 12, 19, 3.2, 2.0, '2');
+  shade(g, '2', '1', '3', ['1','2','3']);
+  ell(g, 9.3, 11.2, 2.2, 2.4, 'k');           // 눈구멍
+  ell(g, 14.7, 11.2, 2.2, 2.4, 'k');
+  ell(g, 12, 14.6, 1.1, 1.3, 'k');            // 코
+  rct(g, 10, 17, 10, 19, 'k');                // 이빨 사이
+  rct(g, 13, 17, 13, 19, 'k');
+  outline(g, ['1','2','3','k'], 'o');
+  ell(g, 9.3, 11.2, 1.9, 2.1, 'k');           // 외곽선이 먹은 눈구멍 되살리기
+  ell(g, 14.7, 11.2, 1.9, 2.1, 'k');
+  return g;
+}
+/* ── 상한 재료 — 곰팡이 핀 덩어리 ── */
+function makeRot(){
+  const g = newGrid();
+  ell(g, 12, 14.5, 7.4, 5.4, '2');
+  ell(g, 8.2, 10.6, 3.4, 3.0, '2');
+  ell(g, 15.8, 11.2, 3.0, 2.6, '2');
+  shade(g, '2', '1', '3', ['1','2','3']);
+  ell(g,  9.0, 13.4, 1.6, 1.5, 'k');          // 곰팡이 반점
+  ell(g, 14.6, 15.6, 1.8, 1.6, 'k');
+  ell(g, 12.2, 11.4, 1.2, 1.1, 'k');
+  ell(g, 16.4, 13.0, 1.0, 1.0, 'k');
+  outline(g, ['1','2','3','k'], 'o');
+  return g;
+}
+ING_SVG.POISON = toSVG(makePoison(), {
+  o:'#241A28', '1':'#F2ECDF', '2':'#DCD2BF', '3':'#B6AA95', k:'#241A28'
+});
+ING_SVG.ROT = toSVG(makeRot(), {
+  o:'#2A3A22', '1':'#9FB86B', '2':'#7E9A4C', '3':'#5C7434', k:'#33421F'
+});
+
+/* ═══════════════════════════════════════════════════
+   요리 그림 — 19가지를 하나씩 그리지 않는다.
+   그릇 모양 아홉 가지에 요리마다 정해진 색을 입혀 만든다.
+   f=음식 · F=밝은 쪽 · D=그늘 · p=그릇 · P=그릇 그늘 · o=외곽선
+   ═══════════════════════════════════════════════════ */
+function mix(hex, amt){                       // amt>0 밝게, <0 어둡게
+  const n = parseInt(hex.slice(1), 16);
+  const ch = i => {
+    const v = (n >> (16 - i*8)) & 255;
+    const t = amt > 0 ? 255 : 0;
+    return Math.round(v + (t - v) * Math.abs(amt));
+  };
+  return '#' + [0,1,2].map(i => ch(i).toString(16).padStart(2,'0')).join('');
+}
+
+const FORM = {
+  plate(g){                                   // 넓적한 접시 + 더미
+    ell(g,12,17.5,10.5,3.4,'p');
+    ell(g,12,14.5,7.2,4.6,'f');
+    ell(g,10,13,3,1.8,'F');
+  },
+  bowl(g){                                    // 깊은 그릇
+    ell(g,12,15,8.6,7.4,'p');
+    rct(g,3,4,20,14,EMPTY,'p');
+    ell(g,12,13.5,7.4,3.2,'f');
+    ell(g,10,12.6,3,1.4,'F');
+    rct(g,5,19,18,20,'P');
+  },
+  slice(g){                                   // 삼각 조각
+    for(let y=5;y<20;y++){
+      const w = (y-5)/15*9;
+      rct(g,Math.round(12-w),y,Math.round(12+w),y,'f');
+    }
+    rct(g,3,18,21,20,'p');
+    ell(g,10,11,1.6,1.6,'D'); ell(g,14,15,1.8,1.8,'D');
+  },
+  bun(g){                                     // 빵 사이에 낀 것
+    ell(g,12,9,8.6,4.2,'p');
+    rct(g,3,11,20,13,'f');
+    ell(g,12,17,8.6,4.2,'p');
+    ell(g,9,7.5,3,1.6,'F');
+  },
+  cup(g){                                     // 컵·콘
+    ell(g,12,8.5,6.6,5.2,'f');
+    ell(g,9.6,6.6,2.4,1.6,'F');
+    for(let y=12;y<21;y++){
+      const w = 6.2 - (y-12)/9*5;
+      rct(g,Math.round(12-w),y,Math.round(12+w),y,'p');
+    }
+  },
+  roll(g){                                    // 김밥 단면
+    ell(g,8,12,4.6,4.6,'p'); ell(g,8,12,2.6,2.6,'f');
+    ell(g,16,12,4.6,4.6,'p'); ell(g,16,12,2.6,2.6,'f');
+    ell(g,12,18,4.6,4.6,'p'); ell(g,12,18,2.6,2.6,'f');
+  },
+  square(g){                                  // 네모난 것
+    rct(g,4,6,19,18,'f');
+    rct(g,7,9,10,11,'D'); rct(g,13,9,16,11,'D');
+    rct(g,7,14,10,16,'D'); rct(g,13,14,16,16,'D');
+    rct(g,4,19,19,20,'p');
+  },
+  ring(g){                                    // 도넛·타르트
+    ell(g,12,13,8.6,8.2,'f');
+    ell(g,12,13,3.2,3,'p');
+    ell(g,9,8.6,3.4,1.8,'F');
+  },
+  stick(g){                                   // 막대 여러 개
+    [[6,7],[10,5],[14,6],[18,8]].forEach(([x,y])=>{
+      rct(g,x-1,y,x+1,19,'f');
+    });
+    ell(g,12,19.5,9,2.6,'p');
+  }
+};
+
+const DISH_FORM = {
+  Phe:'slice', Leu:'bowl',  Ser:'bowl',  Tyr:'bun',   Cys:'bun',
+  Trp:'bowl',  Pro:'bowl',  His:'bun',   Gln:'roll',  Arg:'bowl',
+  Ile:'cup',   Met:'roll',  Thr:'square',Asn:'slice', Lys:'plate',
+  Val:'square',Ala:'ring',  Asp:'ring',  Glu:'stick', Gly:'plate'
+};
+const FOOD_SVG = {};
+for (const k in DISH_FORM){
+  const g = newGrid();
+  FORM[DISH_FORM[k]](g);
+  outline(g, ['f','F','D','p','P'], 'o');
+  const c = FOOD[k].c;
+  FOOD_SVG[k] = toSVG(g, {
+    o:'#2B2118', f:c, F:mix(c,.34), D:mix(c,-.3),
+    p:'#F4EEE2', P:'#CFC5B4'
+  });
+}
+
+$('#ratGate').innerHTML = RAT_SVG;
+$('#ratDone').innerHTML = RAT_SVG;
+
+/* ═══════ 서버 (앱스크립트 안일 때만) ═══════ */
+/* 서버는 shared/compat.js 가 맡는다. window.SRV 와 window.call 이 거기서 온다.
+   게임 코드는 앱스크립트 때와 똑같이 call('점수보고', ...) 만 부르면 된다.
+   서버가 없거나 죽어도 게임은 멈추지 않는다. 랭킹만 안 보일 뿐이다. */
+/* 받침이 있으면 «김밥이랑 · 김밥이요 · 김밥이었다»,
+   없으면 «타코랑 · 타코요 · 타코였다» — 요리 이름이 20가지라 손으로 못 적는다 */
+function 받침(w){
+  const c = String(w).charCodeAt(String(w).length - 1);
+  return (c >= 0xAC00 && c <= 0xD7A3) && (c - 0xAC00) % 28 !== 0;
+}
+const 조사 = (w, 있을때, 없을때) => w + (받침(w) ? 있을때 : 없을때);
+
+/* 이름이 그대로 innerHTML 로 들어가므로 반드시 막아 둔다 */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* ═══════ 상태 ═══════ */
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+let me = store.get('ddMe', {group:'',name:''});
+
+/* 대기실 상태 — 아래 «선생님의 시작을 기다린다»에서 쓴다.
+   자동 로그인이 파싱 도중 enterLobby() 를 부르므로 여기서 먼저 선언해야 한다 */
+let waitTimer = null;
+let skew = 0;                                   // 서버 시계 − 내 시계
+/* 마지막으로 «실제로 들어갔던» 라운드의 시작 시각.
+   순번(seq)으로 비교하면 선생님이 순위를 초기화했을 때 번호가 0으로 돌아가서
+   그 학생만 영영 자동 입장이 안 된다. 시작 시각은 언제나 앞으로만 간다. */
+let lastStart = store.get('ddStart', 0);
+
+const COLS = 6, ROWS = 7;
+
+let G = null;                     // 게임 상태
+
+/* 접시당 시간이 손님마다 조여든다 */
+const dishSec   = n => Math.max(TUNE.DISH_SEC_MIN,
+                                TUNE.DISH_SEC_START - TUNE.DISH_SEC_STEP * (n - 1));
+/* 주문 접시 수 — 1번 손님만 한 접시로 몸을 푼다 */
+const dishCount = n => n <= 1 ? 1
+                     : n <= 3 ? (Math.random() < .5 ? 1 : 2)
+                     : n <= 6 ? (Math.random() < .5 ? 2 : 3)
+                     :          (Math.random() < .4 ? 2 : 3);
+
+/* ═══════ 문 ═══════ */
+function showScr(id){ $$('.scr').forEach(s=>s.classList.toggle('on', s.id===id)); }
+/* 염기뚜이는 개인 활동이다 — 모둠은 받지 않는다 */
+$('#gGo').onclick = () => {
+  const n = $('#gName').value.trim();
+  if (!n){ $('#gateMsg').textContent = '이름을 적어야 들어갈 수 있다.'; return; }
+  me = Object.assign({}, me, {name:n});      // 다른 활동이 쓰는 모둠 값은 건드리지 않는다
+  store.set('ddMe', me);
+  enterLobby();
+};
+$('#gName').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#gGo').click(); });
+
+/* 시험 삼아 돌려 보는 판 — 이름이 «테스트»면 랭킹에 올리지 않는다 */
+function 연습판(){ return /테스트|test/i.test(me.name || ''); }
+
+/* 랭킹 서버로 나가는 길목. 연습판이면 여기서 막는다 */
+function 보고(fn, data, cb){
+  if (연습판()) { if (cb) cb(null); return; }
+  call(fn, data, cb);
+}
+
+function enterLobby(){
+  $('#hello').textContent = `준비됐다, ${me.name} 셰프`;
+  $('#whoPill').textContent = me.name + (연습판() ? ' · 기록 안 함' : '');
+  showScr('lobby');
+  보고('점수보고', {name:me.name, plates:0, wrong:0});   // 입장 알림
+  refreshRank();
+  watchStart();
+}
+if (me.name){
+  $('#gName').value = me.name;
+  enterLobby();
+}
+
+/* ═══════ 메뉴판 ═══════ */
+$('#mlist').innerHTML = MENU.map(k=>{
+  const f = FOOD[k];
+  return `<div class="mrow"><span class="dot" style="background:${f.c}"></span>
+    <span><span class="nm">${f.ko}</span><br><span class="cd">${BYDISH[k].join(' ')}</span></span></div>`;
+}).join('');
+$('#menuBtn').onclick = () => $('#sheet').classList.add('on');
+$('#sheetClose').onclick = () => $('#sheet').classList.remove('on');
+$('#sheet').onclick = e => { if (e.target.id === 'sheet') $('#sheet').classList.remove('on'); };
+
+/* ═══════ 선생님의 «시작»을 기다린다 ═══════
+   빔 화면(board)에서 시작을 누르면 서버에 라운드가 열린다.
+   대기실은 그것을 4초마다 확인하고, 열리는 순간 모두 함께 시작한다.
+   서버가 없으면(단독 실행) «혼자 연습하기»로 들어간다. */
+function watchStart(){
+  clearInterval(waitTimer);
+  if (!SRV){ paintWait(null); return; }
+  const tick = () => call('라운드상태', null, r => {
+    if (!r) return;
+    skew = r.now - Date.now();
+    paintWait(r);
+    if (r.state === 'running' && r.startAt > lastStart){
+      lastStart = r.startAt; store.set('ddStart', lastStart);
+      clearInterval(waitTimer); waitTimer = null;
+      startRound(r.endAt - skew);
+    }
+  });
+  tick();
+  waitTimer = setInterval(tick, TUNE.WAIT_POLL_SEC * 1000);
+}
+function stopWatch(){ clearInterval(waitTimer); waitTimer = null; }
+
+const mmss = ms => {
+  const s = Math.max(0, Math.round(ms/1000));
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+};
+
+function paintWait(r){
+  const box = $('#waitBox'), st = $('#waitSt'), sub = $('#waitSub'), left = $('#waitLeft');
+  if (!SRV){
+    box.className = 'wait off';
+    st.textContent = '선생님 화면과 연결되지 않았다';
+    sub.innerHTML = '선생님이 아직 판을 열지 않았다. 혼자 연습은 지금 할 수 있다.<br>지금은 아래 버튼으로 혼자 연습할 수 있다.';
+    left.style.display = 'none';
+    return;
+  }
+  if (!r || r.state === 'waiting'){
+    box.className = 'wait';
+    st.textContent = '선생님을 기다리는 중';
+    sub.innerHTML = '선생님이 <b>시작</b>을 누르면 모두 함께 영업을 시작한다.';
+    left.style.display = 'none';
+  } else if (r.state === 'running'){
+    box.className = 'wait go';
+    st.textContent = '영업 중 — 곧 들어간다';
+    sub.innerHTML = '남은 시간';
+    left.style.display = '';
+    left.textContent = mmss(r.endAt - r.now);
+  } else {
+    box.className = 'wait off';
+    st.textContent = '영업이 끝났다';
+    sub.innerHTML = '선생님이 다시 <b>시작</b>을 누르면 새 판이 열린다.';
+    left.style.display = 'none';
+  }
+}
+
+/* ═══════ 게임 시작 ═══════ */
+$('#startBtn').onclick = () => { stopWatch(); startRound(); };
+
+/* endAt 을 주면 그 시각에 모두 함께 끝난다 (선생님이 연 라운드) */
+function startRound(endAt){
+  G = {
+    grid: [],                 // 각 칸의 내용 — 염기 또는 위험 타일 (없으면 null)
+    chef: {r: (ROWS/2|0), c: (COLS/2|0)},
+    pot: [],
+    order: null,
+    guestIdx: 0,
+    plates: 0, wrong: 0, zap: 0, hazHit: 0,
+    usedCodons: new Set(),
+    perDish: TUNE.DISH_SEC_START,
+    patience: TUNE.DISH_SEC_START * 1000,
+    tEnd: endAt || (Date.now() + TUNE.ROUND_SEC*1000),
+    tGuest: 0,
+    tReport: Date.now() + TUNE.REPORT_SEC*1000,
+    tSync: Date.now() + TUNE.SYNC_SEC*1000,
+    over: false
+  };
+  $('#myRank').style.display = 'none';
+  $('#chefStand').innerHTML = CHEF_SVG;
+  buildMap();
+  markNear();
+  nextGuest();
+  showScr('play');
+  fitMap();                                  // 화면에 붙인 뒤에 재야 크기가 나온다
+  startTicker();
+  loop();
+}
+
+/* ── 맵 ── */
+function buildMap(){
+  G.grid = Array.from({length:ROWS}, ()=>Array(COLS).fill(null));
+  // 재료를 골고루 뿌린다 (염기마다 3개씩)
+  BASES.forEach(b => { for (let i=0;i<3;i++) placeIngredient(b); });
+  drawMap();
+}
+function emptyCells(){
+  const out = [];
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+    if (!G.grid[r][c] && !(r===G.chef.r && c===G.chef.c)) out.push([r,c]);
+  return out;
+}
+function placeIngredient(b){
+  const e = emptyCells();
+  if (!e.length) return;
+  const [r,c] = e[Math.random()*e.length|0];
+  G.grid[r][c] = b;
+}
+function drawMap(){
+  const m = $('#map');
+  m.style.gridTemplateColumns = `repeat(${COLS},minmax(0,1fr))`;
+  m.style.gridTemplateRows    = `repeat(${ROWS},minmax(0,1fr))`;
+  let h = '';
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    const v = G.grid[r][c];
+    const isChef = (r===G.chef.r && c===G.chef.c);
+    h += `<div class="cell${(r+c)%2?' alt':''}${HAZ[v]?' haz':''}" data-r="${r}" data-c="${c}">`
+       + (v ? `<span class="ing" data-b="${v}">${ING_SVG[v]}</span>` : '')
+       + (isChef ? `<span class="chef">${RAT_SVG}</span>` : '')
+       + `</div>`;
+  }
+  m.innerHTML = h;
+}
+const cellAt = (r,c) => $(`.cell[data-r="${r}"][data-c="${c}"]`);
+
+/* 맵을 남은 자리에 딱 맞게 잰다 — 가로·세로 둘 다 넘지 않는다 */
+function fitMap(){
+  const wrap = $('.mapwrap'), m = $('#map');
+  if (!wrap || !m) return;
+  const pad = 10, gap = 3;                       // .map 의 padding·gap
+  const w = wrap.clientWidth  - 12;              // .mapwrap 의 padding 6px 양쪽
+  const h = wrap.clientHeight - 12;
+  const cell = Math.floor(Math.min(
+    (w - pad - gap*(COLS-1)) / COLS,
+    (h - pad - gap*(ROWS-1)) / ROWS
+  ));
+  if (cell < 8) return;
+  m.style.width  = (cell*COLS + gap*(COLS-1) + pad) + 'px';
+  m.style.height = (cell*ROWS + gap*(ROWS-1) + pad) + 'px';
+}
+addEventListener('resize', fitMap);
+
+/* 한 칸에 무언가를 실제로 그려 넣는다 */
+function paintCell(r, c){
+  const v = G.grid[r][c], cell = cellAt(r,c);
+  if (!cell || !v || cell.querySelector('.ing')) return;
+  const s = document.createElement('span');
+  s.className = 'ing'; s.dataset.b = v; s.innerHTML = ING_SVG[v];
+  cell.insertBefore(s, cell.firstChild);
+  if (HAZ[v]) cell.classList.add('haz');
+}
+/* 같은 것을 다른 빈 칸에 다시 놓는다 */
+function respawn(v){
+  placeIngredient(v);
+  const [r,c] = findIngredient(v);
+  if (r >= 0) paintCell(r, c);
+}
+
+/* ── 위험 타일 ── */
+function layHazards(n){
+  // 지난 손님의 것을 걷어낸다
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    if (!HAZ[G.grid[r][c]]) continue;
+    G.grid[r][c] = null;
+    const cell = cellAt(r,c);
+    cell?.querySelector('.ing')?.remove();
+    cell?.classList.remove('haz');
+  }
+  const plan = hazPlan(n);
+  for (const k in plan) for (let i=0;i<plan[k];i++) placeIngredient(k);
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+    if (HAZ[G.grid[r][c]]) paintCell(r, c);
+}
+
+/* ── 손님 ── */
+function nextGuest(){
+  G.guestIdx++;
+  const n = G.guestIdx;
+  const cnt = dishCount(n);
+  const dishes = [];
+  while (dishes.length < cnt){
+    const d = MENU[Math.random()*MENU.length|0];
+    if (!dishes.includes(d)) dishes.push(d);
+  }
+  G.order = { dishes, at:0, face: Math.random()*GUEST_SVG.length|0 };
+  G.pot = [];
+  G.perDish  = dishSec(n);
+  G.patience = G.perDish * cnt * 1000;      // 접시당 시간 × 접시 수
+  G.tGuest   = Date.now() + G.patience;
+
+  /* 변덕쟁이 — 만들고 있는 도중에 «다른 걸로 주세요» 한다.
+     인내심의 40~65% 쯤 지났을 때 한 번만. 시간은 깎지 않는다 */
+  G.order.fickleAt = (n >= TUNE.FICKLE_FROM && Math.random() < TUNE.FICKLE_ODDS)
+    ? Date.now() + G.patience * (0.40 + Math.random()*0.25)
+    : 0;
+
+  layHazards(n);
+  paintTicket(); paintPot();
+}
+
+/* 손님이 마음을 바꾼다 */
+function fickle(){
+  const o = G.order;
+  o.fickleAt = 0;
+  const 전 = o.dishes[o.at];
+  let d;
+  do { d = MENU[Math.random()*MENU.length|0]; } while (d === 전 || o.dishes.includes(d));
+  o.dishes[o.at] = d;
+  G.pot = []; paintPot();                    // 만들던 것은 소용없어졌다
+  paintTicket();
+  toast(`“아니다, <b>${FOOD[d].ko}</b>${받침(FOOD[d].ko)?'으로':'로'} 주세요”`,
+        `${FOOD[전].ko} → ${FOOD[d].ko} · 냄비를 비웠다`, 'warn', 2400);
+  guestAngry();
+  shake();
+}
+
+/* 손님이 화낸다 — 얼굴이 바뀌고 부르르 떤다 */
+let angryT = null;
+function guestAngry(){
+  const el = $('#guestFace');
+  el.innerHTML = GUEST_ANGRY_SVG[G.order.face];
+  el.classList.remove('angry'); void el.offsetWidth; el.classList.add('angry');
+  clearTimeout(angryT);
+  angryT = setTimeout(()=>{
+    el.classList.remove('angry');
+    if (G && !G.over && G.order) el.innerHTML = GUEST_SVG[G.order.face];
+  }, 700);
+}
+/* 타이머 위로 튀어오르는 「−8초」 */
+function bumpPenalty(sec){
+  const s = document.createElement('div');
+  s.className = 'penalty'; s.textContent = `−${sec}초`;
+  $('.tk').appendChild(s);
+  setTimeout(()=>s.remove(), 1000);
+}
+/* 접시당 시간에 비례해 깎는다 */
+function penalize(ratio){
+  const sec = Math.max(TUNE.PEN_MIN_SEC, Math.round(G.perDish * ratio));
+  G.tGuest -= sec*1000;
+  bumpPenalty(sec);
+  return sec;
+}
+/* 주방 마감 — 셔터가 내려간다 */
+function shutter(){
+  const el = $('#shutter');
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'), 1200);
+}
+
+function paintTicket(){
+  const o = G.order;
+  $('#guestFace').innerHTML = GUEST_SVG[o.face];
+  $('#orderNo').textContent = `손님 ${G.guestIdx}`;
+  const names = o.dishes.map(d => FOOD[d].ko);
+  $('#saySay').innerHTML = names.length === 1
+    ? `“<span class="now">${names[0]}</span> 주세요”`
+    : `“${names.map((x,i)=>{
+          const t = i===o.at ? `<span class="now">${x}</span>` : x;
+          return i < names.length-1 ? 조사(x, '이랑 ', '랑 ').replace(x, t) : 조사(x, '이요', '요').replace(x, t);
+        }).join('')}”`;
+  $('#prog').innerHTML = o.dishes.map((d,i)=>
+    `<span class="dish ${i<o.at?'done':i===o.at?'cur':''}">` +
+    `<span class="pic">${FOOD_SVG[d]||''}</span>${FOOD[d].ko}${i<o.at?' ✓':''}</span>`).join('');
+}
+function paintPot(){
+  $('#potSlots').innerHTML = [0,1,2].map(i=>{
+    const b = G.pot[i];
+    return `<span class="pslot">${b ? ING_SVG[b] : ''}</span>`;
+  }).join('');
+}
+function potMsg(t, cls){
+  const el = $('#potMsg');
+  el.textContent = t; el.className = 'msg' + (cls?' '+cls:'');
+}
+
+/* 큰 알림 — 맵 한가운데 띄운다 */
+let toastT = null;
+function toast(big, sub, kind, ms){
+  const el = $('#toast');
+  el.className = 'toast ' + (kind || '');
+  el.innerHTML = `<span class="box"><span class="big1">${big}</span>` +
+                 (sub ? `<span class="sub">${sub}</span>` : '') + `</span>`;
+  void el.offsetWidth;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), ms || 2200);
+}
+
+/* 움직이면 곧바로 걷어낸다 — 알림이 맵을 가리고 있으면 길이 안 보인다 */
+function 알림치우기(){
+  const el = $('#toast');
+  if (!el.classList.contains('on')) return;
+  clearTimeout(toastT);
+  el.classList.remove('on');
+}
+
+/* 완성한 요리가 냄비에서 손님에게 날아간다 */
+function serveDish(key){
+  const from = $('#potSlots').getBoundingClientRect();
+  const to   = $('#guestFace').getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'fly';
+  el.innerHTML = FOOD_SVG[key] || '';
+  el.style.left = (from.left + from.width/2 - 23) + 'px';
+  el.style.top  = (from.top  + from.height/2 - 23) + 'px';
+  document.body.appendChild(el);
+  const dx = (to.left + to.width/2) - (from.left + from.width/2);
+  const dy = (to.top  + to.height/2) - (from.top  + from.height/2);
+  el.animate([
+    { transform:'translate(0,0) scale(.7) rotate(0deg)', opacity:0 },
+    { transform:'translate(0,-18px) scale(1.15) rotate(-8deg)', opacity:1, offset:.25 },
+    { transform:`translate(${dx}px,${dy}px) scale(.55) rotate(12deg)`, opacity:0 }
+  ], { duration:760, easing:'cubic-bezier(.4,0,.3,1)' }).onfinish = () => el.remove();
+
+  const chef = $('#chefStand');
+  chef.classList.remove('serve'); void chef.offsetWidth; chef.classList.add('serve');
+}
+
+/* 실패했을 때 — 화면을 흔든다 */
+let shakeT = null, flashT = null;
+function shake(strong){
+  const app = $('.app'), fl = $('#flash');
+  app.classList.remove('shake');
+  void app.offsetWidth;                    // 애니메이션 재시작
+  app.classList.add('shake');
+  clearTimeout(shakeT);
+  shakeT = setTimeout(()=>app.classList.remove('shake'), 520);
+
+  fl.classList.add('on');
+  clearTimeout(flashT);
+  flashT = setTimeout(()=>fl.classList.remove('on'), 60);
+
+  if (navigator.vibrate) navigator.vibrate(strong ? [70,40,70] : 90);
+}
+
+/* ── 이동 ── */
+const DIR = { u:[-1,0], d:[1,0], l:[0,-1], r:[0,1] };
+function move(d){
+  if (!G || G.over) return;
+  알림치우기();                       // 방향키를 누르는 순간 알림부터 걷어낸다
+  const [dr,dc] = DIR[d];
+  const nr = G.chef.r + dr, nc = G.chef.c + dc;
+  if (nr<0 || nr>=ROWS || nc<0 || nc>=COLS) return;
+  const old = cellAt(G.chef.r, G.chef.c);
+  if (old) old.querySelector('.chef')?.remove();
+  G.chef = {r:nr, c:nc};
+  const cur = cellAt(nr,nc);
+  if (cur){
+    const s = document.createElement('span');
+    s.className = 'chef'; s.innerHTML = RAT_SVG;
+    cur.appendChild(s);
+  }
+  markNear();
+  const v = G.grid[nr][nc];
+  if (v) pickUp(nr, nc, v);
+}
+$$('.dpad button[data-d]').forEach(b=>{
+  const go = e => { e.preventDefault(); move(b.dataset.d); };
+  b.addEventListener('touchstart', go, {passive:false});
+  b.addEventListener('click', e => { if (e.detail !== 0) return; move(b.dataset.d); });
+  b.addEventListener('mousedown', e => { if (e.button===0 && !('ontouchstart' in window)) go(e); });
+});
+document.addEventListener('keydown', e=>{
+  const k = {ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r'}[e.key];
+  if (k){ e.preventDefault(); move(k); }
+});
+/* 맵 스와이프 — 24px 넘게 밀면 그 방향으로.
+   그보다 짧으면 «누른 것»으로 보고 옆 칸으로 걸어간다.
+   방향키를 못 찾은 아이도 이걸로 게임이 된다. */
+let sx=0, sy=0;
+$('#map').addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+$('#map').addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  if (Math.abs(dx) < 24 && Math.abs(dy) < 24){
+    tapCell(document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+    return;
+  }
+  move(Math.abs(dx) > Math.abs(dy) ? (dx>0?'r':'l') : (dy>0?'d':'u'));
+}, {passive:true});
+$('#map').addEventListener('click', e => { if (e.detail !== 0) tapCell(e.target); });
+
+/* 셰프와 맞닿은 칸을 누르면 그쪽으로 한 칸 간다 */
+function tapCell(el){
+  if (!G || G.over || !el) return;
+  const cell = el.closest ? el.closest('.cell') : null;
+  if (!cell) return;
+  const r = +cell.dataset.r, c = +cell.dataset.c;
+  const dr = r - G.chef.r, dc = c - G.chef.c;
+  if (Math.abs(dr) + Math.abs(dc) !== 1) return;      // 맞닿은 칸만
+  move(dr === -1 ? 'u' : dr === 1 ? 'd' : dc === -1 ? 'l' : 'r');
+}
+/* 갈 수 있는 칸에 옅은 테두리를 둘러 «여기를 누르면 된다»를 알린다 */
+function markNear(){
+  $$('.cell.near').forEach(el => el.classList.remove('near'));
+  for (const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+    cellAt(G.chef.r + dr, G.chef.c + dc)?.classList.add('near');
+  }
+}
+
+/* ── 재료 줍기 ── */
+function pickUp(r, c, v){
+  G.grid[r][c] = null;
+  const cell = cellAt(r,c);
+  cell?.classList.add('pop');
+  cell?.querySelector('.ing')?.remove();
+  cell?.classList.remove('haz');
+  setTimeout(()=>cell?.classList.remove('pop'), 220);
+  respawn(v);                               // 같은 것을 다른 곳에 다시 놓는다
+
+  if (HAZ[v]){ hitHazard(v); return; }
+
+  G.pot.push(v);
+  paintPot();
+  if (G.pot.length === 3) cook();
+  else potMsg(`${G.pot.length} / 3`, '');
+}
+
+/* 위험 타일을 밟았다 */
+function hitHazard(k){
+  const h = HAZ[k];
+  G.hazHit++;
+  if (h.spill){ G.pot = []; paintPot(); }
+  G.tGuest -= h.sec * 1000;
+  bumpPenalty(h.sec);
+  potMsg(`${h.msg} − ${h.sec}초${h.spill ? ' · 냄비가 쏟아졌다' : ''}`, 'bad');
+  shake(true);
+  const cur = cellAt(G.chef.r, G.chef.c);
+  cur?.classList.add('zap');
+  setTimeout(()=>cur?.classList.remove('zap'), 400);
+}
+function findIngredient(b){
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+    if (G.grid[r][c] === b && !cellAt(r,c)?.querySelector('.ing')) return [r,c];
+  return [-1,-1];
+}
+
+/* ── 조리 ── */
+/* 밟은 것은 DNA다. 전사해서 코돈표를 본다.
+   A·T·G·C 세 글자는 어떤 조합이든 유효한 코돈이 되므로
+   «그런 요리는 없다» 는 나올 수 없다. */
+function cook(){
+  const dna  = G.pot.join('');
+  const rna  = 전사(dna);
+  const key  = CODE[rna];
+  const want = G.order.dishes[G.order.at];
+  G.pot = [];
+
+  const 사슬 = `<span class="cd">${dna}</span> → <span class="cd">${rna}</span>`;
+
+  if (key === want){
+    G.plates++;
+    G.usedCodons.add(rna);
+    $('#plates').textContent = G.plates;
+    potMsg(`${dna} → ${rna} → ${FOOD[key].ko}`, 'ok');
+    toast(`${사슬} → ${FOOD[key].ko}`, '완성! 손님에게 나간다', 'ok', 1300);
+    serveDish(key);
+    G.order.at++;
+    if (G.order.at >= G.order.dishes.length){
+      setTimeout(()=>{ if(!G.over){ nextGuest(); potMsg('다음 손님이다', ''); } }, 700);
+    } else {
+      paintTicket();
+    }
+  } else if (key === 'Stop'){
+    G.wrong++;
+    const sec = penalize(TUNE.PEN_STOP);
+    potMsg(`${dna} → ${rna} → 주방 마감`, 'bad');
+    toast(`${사슬} → 주방 마감`, `요리가 나오지 않는다 &nbsp;−${sec}초`, '', 2600);
+    shutter();
+    shake(true);
+  } else {
+    G.wrong++;
+    const sec = penalize(TUNE.PEN_WRONG);
+    potMsg(`${dna} → ${rna} → ${FOOD[key].ko}`, 'bad');
+    toast(`${사슬} → ${FOOD[key].ko}`,
+          `주문은 <b>${FOOD[want].ko}</b>${받침(FOOD[want].ko)?'이었다':'였다'} &nbsp;−${sec}초`, '', 2600);
+    guestAngry();
+    shake();
+  }
+  paintPot();
+}
+$('#dropBtn').onclick = () => { if(!G||G.over) return; G.pot = []; paintPot(); potMsg('냄비를 비웠다', ''); };
+
+/* ── 변이 습격 (서버 또는 자체 발생) ── */
+function zap(){
+  if (!G || G.over || !G.pot.length) return;
+  const i = Math.random()*G.pot.length|0;
+  const old = G.pot[i];
+  const opts = BASES.filter(b=>b!==old);
+  G.pot[i] = opts[Math.random()*opts.length|0];
+  G.zap++;
+  paintPot();
+  potMsg(`⚡ 변이! ${i+1}번째가 ${old}→${G.pot[i]}`, 'bad');
+  cellAt(G.chef.r, G.chef.c)?.classList.add('zap');
+  setTimeout(()=>cellAt(G.chef.r,G.chef.c)?.classList.remove('zap'), 400);
+  if (navigator.vibrate) navigator.vibrate(120);
+}
+window.염기뚜이변이 = zap;      // 교사 화면/서버에서 호출
+
+/* ── 루프 ── */
+function loop(){
+  if (!G || G.over) return;
+  const now = Date.now();
+
+  // 손님 인내심
+  const left = Math.max(0, G.tGuest - now);
+  const pct = left / G.patience * 100;
+  $('#timerFill').style.width = pct + '%';
+  const tb = $('#timerBar');
+  tb.className = 'timer' + (pct < 20 ? ' danger' : pct < 45 ? ' warn' : '');
+  if (left <= 0){
+    G.pot = [];
+    shake(true);
+    nextGuest();
+    potMsg('손님이 그냥 갔다…', 'bad');
+    toast('손님이 그냥 갔다', '다음 손님이 들어온다', '', 1400);
+  }
+
+  // 변덕쟁이 — 만들던 도중에 주문이 바뀐다
+  if (G.order.fickleAt && now >= G.order.fickleAt && G.order.at < G.order.dishes.length) fickle();
+
+  // 남은 영업 시간
+  const clk = $('#clk');
+  clk.textContent = mmss(G.tEnd - now);
+  clk.className = 'sp clk' + ((G.tEnd - now) <= 30000 ? ' low' : '');
+
+  if (now >= G.tEnd){ endRound(); return; }
+  requestAnimationFrame(loop);
+}
+
+/* ── 1초 시계 ──
+   서버 확인과 종료는 requestAnimationFrame 에 맡기면 안 된다.
+   화면이 가려지거나 폰이 잠기면 rAF 가 멈춰서 게임이 통째로 굳는다.
+   setInterval 은 느려질 뿐 멈추지 않는다. */
+let tickTimer = null;
+function startTicker(){
+  clearInterval(tickTimer);
+  tickTimer = setInterval(() => {
+    if (!G || G.over) return;
+    const now = Date.now();
+
+    // 랭킹 보고 — 접시마다 보내면 24명이 몰려 호출이 씹힌다
+    if (now >= G.tReport){
+      G.tReport = now + TUNE.REPORT_SEC*1000;
+      보고('점수보고', {name:me.name, plates:G.plates, wrong:G.wrong});
+    }
+
+    // 선생님이 «끝내기»를 눌렀거나 새 판을 열었는지 확인한다
+    if (now >= G.tSync){
+      G.tSync = now + TUNE.SYNC_SEC*1000;
+      call('라운드상태', null, r => {
+        if (!r || !G || G.over) return;
+        skew = r.now - Date.now();
+        if (r.state === 'running' && r.startAt > lastStart){  // 새 판이 열렸다
+          lastStart = r.startAt; store.set('ddStart', lastStart);
+          startRound(r.endAt - skew);
+          return;
+        }
+        G.tEnd = r.endAt - skew;                            // 끝내기를 눌렀으면 여기서 당겨진다
+      });
+    }
+
+    if (now >= G.tEnd) endRound();
+  }, 1000);
+}
+
+function endRound(){
+  if (!G || G.over) return;
+  G.over = true;
+  clearInterval(tickTimer); tickTimer = null;
+  $('#fPlates').textContent = G.plates;
+  $('#fGuests').textContent = G.guestIdx;
+  $('#fWrong').textContent = G.wrong;
+  $('#fZap').textContent = G.zap;
+  $('#fUniq').textContent = G.usedCodons.size;
+  $('#doneNote').innerHTML = G.usedCodons.size > 1
+    ? `서로 다른 주문서 <b style="color:var(--hi)">${G.usedCodons.size}가지</b>로 요리를 만들었다.<br>같은 음식인데 주문서가 여러 개인 것 — 이게 <b style="color:var(--hi)">코돈의 중복성</b>이다.`
+    : `주문서를 한 가지만 썼다. 같은 음식이라도 주문서는 여러 개다.`;
+
+  보고('영업종료', {
+    name:me.name,
+    plates:G.plates, wrong:G.wrong, zap:G.zap, haz:G.hazHit,
+    codons:[...G.usedCodons]
+  }, r => {
+    const el = $('#myRank');
+    if (연습판()){
+      el.style.display = '';
+      el.innerHTML = `<b style="color:var(--hi)">연습판</b> — 랭킹에 올리지 않았다`;
+      return;
+    }
+    if (!r || !r.순위) return;
+    el.style.display = '';
+    el.innerHTML = `지금 <b>${r.순위}등</b> / ${r.전체}명`;
+  });
+  showScr('done');
+}
+$('#againBtn').onclick = () => { showScr('lobby'); refreshRank(); watchStart(); };
+
+/* ── 대기실 순위판 ── */
+function refreshRank(){
+  call('랭킹읽기', null, r => {
+    const box = $('#lobbyRank'), list = $('#lobbyRankList');
+    if (!r || !r.개인 || !r.개인.length){ box.style.display = 'none'; return; }
+    box.style.display = '';
+    list.innerHTML = r.개인.slice(0,5).map((x,i) =>
+      `<div class="row${x.n===me.name ? ' me' : ''}">`
+      + `<span class="no">${i+1}</span>`
+      + `<span class="who">${esc(x.n)}</span>`
+      + `<span class="pt">${x.p|0}</span></div>`).join('');
+  });
+}
+window.염기뚜이종료 = endRound;
+</script>

@@ -5,8 +5,10 @@
  * 함수가 토큰과 선생님 코드를 확인한다. (db/schema.sql 참고)
  *
  * service_role 키는 절대 여기에 넣지 않는다. 그건 무엇이든 할 수 있는 열쇠다.
+ *
+ * 비어 있으면 서버 없이 도는 «혼자 연습» 상태가 된다. 게임은 그대로 돌아간다.
  */
-export const CONFIG = {
+window.CONFIG = {
   SUPABASE_URL: '',
   SUPABASE_ANON_KEY: ''
 };
