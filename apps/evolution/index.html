@@ -57,7 +57,7 @@
 
  /* ── 개체 띠 ── */
  .strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 6px;-webkit-overflow-scrolling:touch}
- .tile{flex:none;width:62px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);
+ .tile{flex:none;width:84px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);
        padding:3px;text-align:center;cursor:pointer;position:relative}
  .tile.on{border-color:var(--accent2);box-shadow:0 0 0 2px #ffd36b55}
  .tile.dead{opacity:.3;filter:grayscale(1)}
@@ -82,9 +82,10 @@
  .seg button.rec.on{background:var(--rec);border-color:var(--rec)}
  .seg button.rec.on b,.seg button.rec.on small{color:#3a0018}
 
- .prev{position:relative;width:104px;height:112px;flex:none;border:1px solid var(--line);
+ .prev{position:relative;width:150px;height:162px;flex:none;border:1px solid var(--line);
        border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#243056,#0c1224)}
- .prev img{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:86px;image-rendering:pixelated}
+ .prev img{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:128px;image-rendering:pixelated}
+ @media (max-width:380px){ .prev{width:118px;height:128px} .prev img{width:100px} }
 
  .kv{font-size:12px;color:var(--sub);line-height:1.7}
  .kv b{color:var(--ink)}
@@ -101,6 +102,10 @@
  .bar{height:7px;background:#0c1224;border-radius:5px;overflow:hidden;margin-top:4px}
  .bar>i{display:block;height:100%;background:var(--accent)}
  .req{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #202741}
+ /* 겉모습을 보고 고르는 게 이 게임의 핵심인데 44px 로는 형질이 안 보였다 */
+ .req img.face{width:76px;flex:none;image-rendering:pixelated;border:1px solid var(--line);
+       border-radius:10px;background:radial-gradient(circle at 50% 40%,#243056,#0c1224);cursor:zoom-in}
+ .req img.face.sm{width:52px;opacity:.8}
  .req:last-child{border-bottom:0}
  .req .t{flex:1;font-size:12.5px}
  .req button{padding:7px 10px;font-size:12px;flex:none}
@@ -115,6 +120,31 @@
      padding:7px 10px;font-size:12px;margin-top:9px}
  .hide{display:none}
  .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:18px;line-height:1.7}
+ /* ── 크게 보기 ── */
+ .zoom{position:fixed;inset:0;z-index:90;background:#060a16e8;backdrop-filter:blur(3px);
+       display:flex;align-items:center;justify-content:center;padding:16px}
+ .zoom .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;
+       max-width:420px;width:100%;max-height:92vh;overflow:auto;text-align:center}
+ .zoom img{width:min(260px,66vw);image-rendering:pixelated;
+       background:radial-gradient(circle at 50% 40%,#243056,#0c1224);border-radius:14px}
+ .zoom .ph{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;margin-top:10px;text-align:left}
+ .zoom .ph div{font-size:12px;color:var(--sub);display:flex;justify-content:space-between;
+       border-bottom:1px solid #202741;padding:2px 0}
+ .zoom .ph b{color:var(--ink);font-weight:700}
+ /* ── 환경 변화 팝업 ── */
+ .pop{position:fixed;inset:0;z-index:95;background:#060a16ee;backdrop-filter:blur(3px);
+      display:flex;align-items:center;justify-content:center;padding:16px}
+ .pop .card{background:var(--panel);border:2px solid var(--accent2);border-radius:18px;padding:16px;
+      max-width:440px;width:100%;max-height:92vh;overflow:auto}
+ .pop h2{margin:0 0 4px;font-size:19px}
+ .pop .big{font-size:15px;font-weight:800;color:var(--accent2);margin:8px 0}
+ /* ── 구역 설명 ── */
+ .desc{background:#101830;border:1px solid var(--line);border-radius:11px;padding:10px 12px;
+       font-size:13px;line-height:1.75;margin-top:9px}
+ .desc .hd{font-weight:800;font-size:14px;margin-bottom:4px}
+ .desc .hint{color:var(--sub);font-size:11.5px;margin-top:6px}
+ .fitn{position:absolute;top:2px;right:3px;font-size:10px;font-weight:800;font-family:ui-monospace,monospace;
+       background:#000a;border:1px solid var(--accent);border-radius:6px;padding:0 4px;color:var(--accent)}
 </style>
 
 <header><div class="in">
@@ -152,8 +182,8 @@
   </div>
 
   <div class="panel">
-    <div class="plabel">② 개체를 눌러 유전자를 고치세요 — 한 자리에
-      <b style="color:var(--accent)">DNA 1</b>. <b>🔒는 겉모습에 안 드러나는 형질</b>입니다.</div>
+    <div class="plabel">② 개체를 눌러 고르고, 아래에서 <b style="color:var(--accent)">유전자 변형</b>을
+      굴리세요. 어느 자리가 어떻게 바뀔지는 <b>고를 수 없습니다.</b></div>
     <div class="strip" id="setupStrip"></div>
 
   </div>
@@ -204,6 +234,8 @@
 </section>
 
 <div class="foot">2026 광주하남영재교육원 · 중학 융합과정 · 변석환</div>
+<div id="zoomBox"></div>
+<div id="popBox"></div>
 </div>
 
 <script src="../../shared/config.js"></script>
@@ -232,6 +264,94 @@ const phOf = g => RULES.표현형문자열(g);
 const genoLabel = (g,i) => RULES.유전자표기(g,i);
 const CO = (r,c)=> String.fromCharCode(65+r)+(c+1);
 const cheb = (a,b)=> Math.max(Math.abs(a.r-b.r), Math.abs(a.c-b.c));
+
+/* ══════════ 구역 설명 · 크게 보기 · 팝업 ══════════ */
+
+/* 구역 설명은 «무엇이 유리한지» 를 말해 주지 않는다. 그 구역이 어떤 곳인지만
+   자세히 적어 두고, 학생이 읽고 «그럼 뭐가 필요하겠네» 를 스스로 잇게 한다.
+   설명 글은 rules.js 의 BIOMES[].설명 에 있다 — 화면마다 따로 쓰지 않는다. */
+function 구역설명(key, 붙임, 짧게){
+  const b = biome(key);
+  return '<div class="desc"><div class="hd" style="color:var(--accent2)">'
+    + b.emoji + ' ' + b.name + '</div>' + (b.설명||'')
+    + (붙임 ? '<div class="hint">' + 붙임 + '</div>' : '')
+    + (짧게 ? ''
+            : '<div class="hint">이 글을 읽고 <b>어떤 형질이 여기서 살아남기 좋을지</b> 학습지에 적어 두세요. '
+              + '정답은 아무도 알려 주지 않습니다.</div>')
+    + '</div>';
+}
+
+/* 겉모습을 보고 형질을 읽어 내는 게 이 게임이라, 작으면 게임이 안 된다.
+   어느 그림이든 눌러서 크게 볼 수 있게 한다. */
+function 크게(ph, 제목, 부제){
+  const 줄 = GENES.filter(G=>G.보임).map((G,i)=>
+    '<div><span>'+G.n+'</span><b>'+(ph.charAt(i)==='1'?G.d:G.r)+'</b></div>').join('');
+  $('#zoomBox').innerHTML =
+    '<div class="zoom" id="zoomOv"><div class="card">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:2px">'+제목+'</div>'
+    + (부제 ? '<div style="color:var(--sub);font-size:12px;margin-bottom:8px">'+부제+'</div>' : '')
+    + '<img src="'+sprite(ph)+'">'
+    + '<div class="plabel" style="margin:10px 0 0;text-align:left">겉모습에 드러난 형질</div>'
+    + '<div class="ph">'+줄+'</div>'
+    + '<div class="row" style="margin-top:12px"><button class="primary" id="zoomClose">닫기</button></div>'
+    + '</div></div>';
+  const 닫기 = ()=>{ $('#zoomBox').innerHTML=''; };
+  $('#zoomClose').onclick = 닫기;
+  $('#zoomOv').onclick = e => { if(e.target.id==='zoomOv') 닫기(); };
+}
+/* 화면 어디서든 <img data-zoom="겉모습|제목|부제"> 를 누르면 크게 뜬다 */
+document.addEventListener('click', e => {
+  const z = e.target && e.target.getAttribute && e.target.getAttribute('data-zoom');
+  if(!z) return;
+  const [ph, 제목, 부제] = z.split('|');
+  크게(ph, 제목||'외계인', 부제||'');
+});
+
+/* 환경 변화는 뒤에 앉은 학생이 빔 화면을 못 봐서 놓치기 쉽다.
+   세대가 바뀔 때마다 «모두의 화면» 을 한 번 덮어 알린다. 같은 세대에 두 번은 안 뜬다. */
+let 알린세대 = null;
+function 환경팝업(){
+  if(!S || S.phase!=='env') return;
+  if(알린세대 === S.turn) return;
+  알린세대 = S.turn;
+
+  const D = S.result && S.result.재해;
+  const 바뀜 = S.result && S.result.설명;   // «행성이 더워졌습니다» 같은 한 줄
+  let h = '<div class="pop" id="popOv"><div class="card">'
+    + '<h2>🌍 ' + S.turn + '세대 — 환경이 바뀌었습니다</h2>'
+    + '<div style="color:var(--sub);font-size:12px">어제 유리하던 형질이 오늘은 불리할 수 있습니다.</div>';
+
+  if(바뀜) h += '<div class="big">' + 바뀜 + '</div>';
+
+  if(D) h += '<div class="dis" style="margin-top:10px">'+D.emoji+' <b>'+D.이름+'</b> — '+D.말
+    +'<br>덮친 구역 '+D.칸들.map(x=>CO(x.r,x.c)).join(' · ')
+    +' · 전체 <b>'+D.죽음+'마리 사망</b>'
+    +'<br><span style="font-weight:400;color:var(--sub)">무엇을 가진 개체가 살아남았을까요? 학습지에 적어 두세요.</span></div>';
+
+  // 내 개체가 서 있는 칸이 무엇으로 바뀌었는지 — 이게 제일 급한 정보다
+  const 칸들 = {};
+  myAlive().forEach(a => { 칸들[a.r+','+a.c] = (칸들[a.r+','+a.c]||0) + 1; });
+  const 목록 = Object.keys(칸들);
+  if(목록.length){
+    h += '<div class="plabel" style="margin:12px 0 4px">내 개체가 서 있는 곳</div>';
+    h += 목록.map(k=>{
+      const [r,c] = k.split(',').map(Number);
+      const b = biome(S.board[r][c]);
+      return '<div class="req" style="padding:6px 0"><div class="t">'
+        + '<b>'+CO(r,c)+'</b> · '+b.emoji+' <b>'+b.name+'</b>'
+        + ' <span style="color:var(--sub)">— '+칸들[k]+'마리</span></div></div>';
+    }).join('');
+  }
+
+  if(S.forecast) h += '<div class="fc">📡 <b>다음</b> 세대 예보 — <b>'+S.forecast+'</b></div>';
+  if(S.경보) h += '<div class="warn">📡 더듬이가 긴 개체 덕분에 먼저 알았습니다 — 다음 세대에 '
+    + S.경보.emoji+' <b>'+S.경보.이름+'</b> 이(가) <b>'+S.경보.칸+'</b> 근처를 덮칩니다.</div>';
+
+  h += '<div class="row" style="margin-top:14px"><button class="primary" id="popClose">알겠습니다</button></div>'
+    + '</div></div>';
+  $('#popBox').innerHTML = h;
+  $('#popClose').onclick = ()=>{ $('#popBox').innerHTML=''; };
+}
 
 /* ══════════ 상태 ══════════ */
 let SID = localStorage.getItem('evoSid') || '';
@@ -344,6 +464,7 @@ function paint(){
   paintMine();
   paintAction();
   paintInbox();
+  환경팝업();
 }
 
 function paintTimer(){
@@ -391,40 +512,61 @@ function paintSetup(){
   list.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='tile'+(i===editIdx?' on':'');
     d.innerHTML='<img src="'+sprite(phOf(a.g))+'"><div class="lb">'+(i+1)+'번</div>';
-    d.onclick=()=>{ editIdx=i; paintSetup(); };
+    d.onclick=()=>{ editIdx=i; 마지막변형=null; paintSetup(); };
     st.appendChild(d);
   });
   const A=list[editIdx], g=A.g;
   $('#editNo').textContent=(editIdx+1)+'번';
   $('#setupPrev').src=sprite(phOf(g));
+  $('#setupPrev').setAttribute('data-zoom', phOf(g)+'|내 '+(editIdx+1)+'번 개체|겉모습에 드러난 형질만 보입니다');
+  $('#setupPrev').style.cursor='zoom-in';
   $('#editGeno').innerHTML='유전자형 <b>'+GENES.map((_,i)=>genoLabel(g,i)).join(' ')+'</b>';
+  const 값 = (S.settings&&S.settings.editCost)||1;
   $('#editFit').innerHTML='남은 <b style="color:var(--accent)">DNA '+(S.me.dna||0)+'</b>'
-    +' <span style="color:var(--sub)">· 한 자리 고치기 = DNA 1</span>';
-  const box=$('#editGenes'); box.innerHTML='';
-  GENES.forEach((G,i)=>{
-    const row=document.createElement('div'); row.className='grow';
-    const S1=G.s.toUpperCase(), s1=G.s.toLowerCase();
-    row.innerHTML='<div class="gname">'+(G.보임?'':'🔒 ')+G.n+'<small>'+S1+'='+G.d+'</small></div>';
-    if(!G.보임) row.style.background='#0f1526';
-    const seg=document.createElement('div'); seg.className='seg';
-    [[2,S1+S1,G.d],[1,S1+s1,G.d],[0,s1+s1,G.r]].forEach(([v,gl,phl])=>{
-      const bt=document.createElement('button');
-      if(v===0) bt.className='rec';
-      bt.innerHTML='<b>'+gl+'</b><small>'+phl+'</small>';
-      if(+g.charAt(i)===v) bt.classList.add('on');
-      bt.onclick=async ()=>{
-        if(+g.charAt(i)===v) return;
-        if((S.me.dna||0)<1){ alert('DNA 가 모자랍니다.'); return; }
-        bt.disabled=true;
-        const r=await RUN('유전자고치기', SID, A.i, i+1, v);
-        if(!r.ok) alert(r.msg);
-        tick(true);
-      };
-      seg.appendChild(bt);
-    });
-    row.appendChild(seg); box.appendChild(row);
-  });
+    +'<div style="margin-top:6px"><button class="primary" id="btnMut" style="width:100%;white-space:nowrap">'
+    +'🎲 무작위 변형 (DNA&nbsp;'+값+')</button></div>'
+    +'<div style="color:var(--sub);font-size:11.5px;margin-top:5px">'
+    +'어느 자리가 어떻게 바뀔지는 <b>고를 수 없습니다.</b> 굴려 보고 마음에 안 들면 또 굴리세요.</div>'
+    +'<div id="mutLog"></div>';
+
+  $('#btnMut').onclick = async ()=>{
+    if((S.me.dna||0) < 값){ alert('DNA 가 모자랍니다.'); return; }
+    const bt=$('#btnMut'); bt.disabled=true; bt.textContent='굴리는 중…';
+    const r = await RUN('유전자변형', SID, A.i);
+    if(!r.ok){ alert(r.msg); bt.disabled=false; bt.innerHTML='🎲 무작위 변형 (DNA&nbsp;'+값+')'; return; }
+    // 무엇이 바뀌었는지는 알려 준다. 안 알려 주면 DNA 만 사라진 셈이 된다
+    const G = GENES[r.pos-1];
+    마지막변형 = { pos:r.pos, from:r.from, to:r.to, name:G.n, 보임:G.보임 };
+    tick(true);
+  };
+  if(마지막변형){
+    const m=마지막변형, G=GENES[m.pos-1];
+    const 표기 = v => (v===2? G.s.toUpperCase()+G.s.toUpperCase()
+                     : v===1? G.s.toUpperCase()+G.s.toLowerCase()
+                     :        G.s.toLowerCase()+G.s.toLowerCase());
+    $('#mutLog').innerHTML='<div class="msg g" style="margin-top:8px">'
+      +'<b>'+m.pos+'번 자리 — '+(m.보임?'':'🔒 ')+m.name+'</b> 이(가) '
+      +'<b class="mono">'+표기(m.from)+'</b> → <b class="mono" style="color:var(--accent2)">'+표기(m.to)+'</b> 로 바뀌었습니다.'
+      +(m.보임?'':'<br><span style="color:var(--sub)">숨은 형질이라 그림은 그대로입니다.</span>')
+      +'</div>';
+  }
+
+  // 유전자형은 읽기만 한다. 고르는 것은 이제 없다
+  const box=$('#editGenes'); box.innerHTML=
+    '<div class="plabel" style="margin:10px 0 4px">이 개체의 유전자형 — '
+    +'<b>🔒는 겉모습에 안 드러나는 형질</b></div>'
+    + GENES.map((G,i)=>{
+        const v=+g.charAt(i);
+        return '<div class="grow"'+(G.보임?'':' style="background:#0f1526"')+'>'
+          +'<div class="gname" style="width:78px">'+(G.보임?'':'🔒 ')+G.n+'</div>'
+          +'<div class="mono" style="width:34px;font-weight:800;color:'
+            +(v===0?'var(--rec)':v===1?'var(--accent2)':'var(--accent)')+'">'
+            +genoLabel(g,i)+'</div>'
+          +'<div style="flex:1;font-size:11.5px;color:var(--sub)">'
+            +(v===0?G.r:G.d)+(v===1?' <span style="color:var(--accent2)">(잡종)</span>':'')+'</div></div>';
+      }).join('');
 }
+let 마지막변형 = null;
 $('#getAliens').onclick=async ()=>{
   if(!home){ $('#setupMsg').innerHTML='<div class="msg r">시작 구역을 먼저 고르세요.</div>'; return; }
   $('#getAliens').disabled=true;
@@ -449,6 +591,14 @@ function paintBoard(){
     let h='<div class="co">'+CO(r,c)+'</div><div class="em">'+b.emoji+'</div><div class="nm">'+b.name+'</div>';
     if(cell.n) h+='<div class="cnt">'+cell.n+'</div>';
     if(cell.mine) h+='<div class="mine">'+cell.mine+'</div>';
+    // 정찰을 샀고 개체를 골랐으면, 갈 수 있는 칸마다 적응도를 적어 준다
+    if(A && S.me.scout && S.phase==='move'){
+      const from0={ r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
+      if(cheb(from0,{r,c})<=2){
+        const f=적응도보기(A.g,r,c);
+        if(f!=null) h+='<div class="fitn">'+f+'</div>';
+      }
+    }
     el.innerHTML=h;
 
     if(A){
@@ -471,10 +621,22 @@ function onCell(r,c){
   const A=selAlien();
   if(A && S.phase==='move'){
     const from={ r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
-    if(cheb(from,{r,c})<=2){ pendingMoves[A.i]={r,c}; queueSave(); paintBoard(); paintAction(); return; }
+    // 옮기더라도 그 칸이 어떤 곳인지는 같이 보여 준다. 안 그러면 옮기고 나서 알 길이 없다
+    if(cheb(from,{r,c})<=2){
+      pendingMoves[A.i]={r,c}; queueSave();
+      showCell(r,c); paintBoard(); paintAction(); return;
+    }
   }
   showCell(r,c);
   paintBoard();
+}
+
+/* 정찰을 샀으면 적응도를 계산해 준다. 계산은 rules.js 가 한다 —
+   서버는 «샀다» 만 적어 두고, 값은 학생 브라우저가 낸다 */
+function 적응도보기(geno, r, c){
+  if(!S.me.scout) return null;
+  try { return Math.round(RULES.적응도(geno, S.board[r][c])); }
+  catch(e){ return null; }
 }
 
 function showCell(r,c){
@@ -487,8 +649,31 @@ function showCell(r,c){
     h+='<br><b style="color:var(--rec)">다른 사람 개체 '+here.length+'마리</b><br>';
     h+=here.map(x=>'<span class="tag">'+x.name+(x.bred?' ·교배함':'')+'</span>').join('');
   } else if(!mine.length) h+='<br><span style="color:var(--sub)">비어 있습니다.</span>';
+
+  // 정찰을 샀으면 고른 개체가 이 칸에서 얼마나 잘 살지 숫자로 보여 준다
+  const A0 = selAlien();
+  if(A0 && S.me.scout){
+    const now = pendingMoves[A0.i] || {r:A0.r,c:A0.c};
+    const 여기 = 적응도보기(A0.g, r, c), 지금 = 적응도보기(A0.g, now.r, now.c);
+    if(여기 != null){
+      const 차 = 여기 - 지금;
+      h += '<br><br>🔭 고른 개체(<b>'+(내번호(A0.i)||'?')+'번</b>)의 적응도 — 이 칸 '
+        + '<b class="fit" style="color:var(--accent2)">'+여기+'</b>'
+        + ' <span style="color:var(--sub)">(지금 있는 '+CO(now.r,now.c)+' 칸은 '+지금+'</span>'
+        + (차===0 ? '<span style="color:var(--sub)">, 같음)</span>'
+                  : ', <b style="color:'+(차>0?'var(--accent)':'var(--rec)')+'">'
+                    +(차>0?'+':'')+차+'</b><span style="color:var(--sub)">)</span>');
+    }
+  }
+
   $('#cellInfo').className='msg i';
-  $('#cellInfo').innerHTML=h;
+  $('#cellInfo').innerHTML = h + 구역설명(S.board[r][c]);
+}
+
+function 내번호(id){
+  const list=(S.me.aliens||[]);
+  for(let i=0;i<list.length;i++) if(list[i].i===id) return i+1;
+  return null;
 }
 
 /* ── 내 개체 ── */
@@ -503,7 +688,8 @@ function paintMine(){
     const d=document.createElement('div');
     d.className='tile'+(a.i===sel?' on':'')+(a.a?'':' dead');
     let h='<img src="'+sprite(phOf(a.g))+'">';
-    h+='<div class="cell-at">'+CO(p.r,p.c)+'</div>';
+    // 신청함이 «내 3번 개체» 라고 말하는데 정작 타일에 번호가 없었다
+    h+='<div class="cell-at">'+내번호(a.i)+'번</div>';
     if(a.bred) h+='<div class="bd">✓</div>';
     h+='<div class="lb">'+(a.a?CO(p.r,p.c):'사망')+'</div>';
     d.innerHTML=h;
@@ -528,7 +714,8 @@ function paintMine(){
   const 숨은줄 = GENES.map((G,i)=>G.보임?'':줄(G,i)).join('');
 
   $('#myDetail').innerHTML =
-    '<div style="display:flex;gap:10px;margin-top:8px"><div class="prev"><img src="'+sprite(ph)+'"></div>'
+    '<div style="display:flex;gap:10px;margin-top:8px"><div class="prev">'
+    +'<img src="'+sprite(ph)+'" style="cursor:zoom-in" data-zoom="'+ph+'|내 개체|'+CO(p.r,p.c)+' 구역"></div>'
     +'<div style="flex:1"><div class="kv">자리 <b>'+CO(p.r,p.c)+'</b> · '+b.emoji+' '+b.name+'</div>'
     +(A.a ? (A.crowd>0
         ? '<div class="kv" style="color:var(--rec)">이 칸이 붐빕니다 — 넉넉한 수보다 '+A.crowd+'마리 많습니다.</div>'
@@ -536,7 +723,10 @@ function paintMine(){
       : '<div class="kv" style="color:var(--sub)">죽은 개체입니다.</div>')
     +'</div></div>'
     +'<div class="plabel" style="margin:10px 0 2px">겉모습에 드러나는 형질</div>'+보임줄
-    +'<div class="plabel" style="margin:10px 0 2px">🔒 드러나지 않는 형질 — 남은 볼 수 없습니다</div>'+숨은줄;
+    +'<div class="plabel" style="margin:10px 0 2px">🔒 드러나지 않는 형질 — 남은 볼 수 없습니다</div>'+숨은줄
+    + 구역설명(S.board[p.r][p.c],
+        (S.me.scout ? '🔭 이 개체의 지금 적응도 <b class="fit" style="color:var(--accent2)">'
+                      + 적응도보기(A.g,p.r,p.c) + '</b>' : ''), true);
 }
 
 /* ── 단계별 할 일 ── */
@@ -561,7 +751,8 @@ function paintAction(){
 
   }else if(S.phase==='move'){
     L.textContent='이동 — 최대 2칸 (대각선 포함)';
-    if(!A){ B.innerHTML='<div class="msg i">아래에서 <b>내 개체</b>를 하나 고르고, 보드에서 <b>초록 칸</b>을 누르면 그리로 갑니다.</div>'; }
+    if(!A){ B.innerHTML='<div class="msg i">아래에서 <b>내 개체</b>를 하나 고르고, 보드에서 <b>초록 칸</b>을 누르면 그리로 갑니다.</div>';
+      정찰칸(B); }
     else{
       const cur=pendingMoves[A.i]||A;
       const from={ r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
@@ -606,6 +797,7 @@ function paintAction(){
         queueSave(); paint();
         $('#actBody').insertAdjacentHTML('beforeend','<div class="msg g">'+n+'마리를 '+CO(cur.r,cur.c)+'로 모았습니다.</div>');
       };
+      정찰칸(B);
     }
 
   }else if(S.phase==='breed'){
@@ -650,10 +842,11 @@ function paintAction(){
           const nm = 남 ? x.name : ('내 '+(myIdx[x.i]||'?')+'번 개체');
           const ph = 남 ? x.ph : phOf(x.g);
           const sp = null;   // 남의 개체가 얼마나 잘 사는지는 알 수 없다. 겉모습만 보인다
-          return '<div class="req"><img src="'+sprite(ph)+'" style="width:40px;image-rendering:pixelated">'
+          return '<div class="req"><img class="face" src="'+sprite(ph)+'"'
+            +' data-zoom="'+ph+'|'+nm+'|'+CO(x.r,x.c)+' 구역 · 눌러서 크게 보기">'
             +'<div class="t"><b style="color:'+(남?'var(--accent)':'var(--sub)')+'">'+nm+'</b>'
             +'<br><span style="color:var(--sub);font-size:11px">'+CO(x.r,x.c)+' 구역'
-            +(남?'':' · 근친')+'</span></div>'
+            +(남?'':' · 근친')+'<br>그림을 누르면 크게 보입니다</span></div>'
             +'<button class="'+(남?'go':'')+'" data-k="'+i+'">'+(남?'신청':'교배')+'</button></div>';
         }).join('');
         $$('#actBody button[data-k]').forEach(btn=>{
@@ -696,6 +889,35 @@ function paintAction(){
 function 거래가능(){
   const v=(S.settings||{}).tradeMax;
   return (v==null ? 2 : v) > 0;
+}
+
+/* ── 정찰 ────────────────────────────────────────────────────────
+   적응도는 원래 학생에게 안 보여 주는 값이다. 죽고 사는 것만 보고
+   «여기는 뭐가 유리하구나» 를 알아내는 게 이 게임이기 때문이다.
+
+   그런데 그것만으로는 너무 어려웠다. 그래서 DNA 를 내면 이번 세대 동안
+   숫자로 볼 수 있게 열었다. 공짜가 아니라 값을 치르는 힌트다 —
+   유전자를 굴릴 DNA 를 쓸지, 앞을 내다볼 DNA 를 쓸지 고르게 된다. */
+function 정찰칸(B){
+  const 값 = (S.settings&&S.settings.scoutCost)||2;
+  if(S.me.scout){
+    B.insertAdjacentHTML('beforeend',
+      '<div class="msg g">🔭 <b>정찰 중</b> — 개체를 고르면 갈 수 있는 칸마다 '
+      +'<b>적응도</b>가 숫자로 뜹니다. 칸을 누르면 지금 자리와 견줘 줍니다.'
+      +'<br><span style="color:var(--sub)">적응도가 높을수록 살아남을 확률이 높습니다. 이번 세대 동안만 보입니다.</span></div>');
+    return;
+  }
+  B.insertAdjacentHTML('beforeend',
+    '<div class="row" style="margin-top:7px"><button id="btnScout">🔭 정찰 사기 — DNA '+값+'</button></div>'
+    +'<div style="color:var(--sub);font-size:11.5px;margin-top:5px">'
+    +'이번 세대 동안 내 개체의 <b>적응도</b>가 칸마다 숫자로 보입니다. 세대가 바뀌면 다시 사야 합니다.</div>');
+  $('#btnScout').onclick=async ()=>{
+    if((S.me.dna||0) < 값){ alert('DNA 가 모자랍니다.'); return; }
+    const bt=$('#btnScout'); bt.disabled=true; bt.textContent='…';
+    const r=await RUN('정찰', SID);
+    if(!r.ok){ alert(r.msg); bt.disabled=false; bt.textContent='🔭 정찰 사기 — DNA '+값; return; }
+    tick(true);
+  };
 }
 
 /* ── 거래 ──────────────────────────────────────────────────────────
@@ -744,9 +966,11 @@ function paintTrade(B, A){
     +'<b style="color:var(--rec)">한 번 바꾸면 되돌릴 수 없습니다.</b></span></div>';
 
   h += 상대.map((x,i)=>
-     '<div class="req"><img src="'+sprite(x.ph)+'" style="width:44px;image-rendering:pixelated">'
+     '<div class="req"><img class="face" src="'+sprite(x.ph)+'"'
+    +' data-zoom="'+x.ph+'|'+x.name+' 님의 개체|'+CO(x.r,x.c)+' 구역 · 겉모습만 보입니다">'
     +'<div class="t"><b style="color:var(--accent)">'+x.name+'</b> 님의 개체'
-    +'<br><span style="color:var(--sub);font-size:11px">'+CO(x.r,x.c)+' 구역</span></div>'
+    +'<br><span style="color:var(--sub);font-size:11px">'+CO(x.r,x.c)+' 구역'
+    +'<br>그림을 누르면 크게 보입니다</span></div>'
     +'<select data-d="'+i+'" style="background:#0d1830;color:#e8eefc;border:1px solid #2a3a5e;'
       +'border-radius:8px;padding:5px 6px;font:inherit;font-size:12px">'
     + Array.from({length:얹기상한+1},(_,d)=>'<option value="'+d+'">DNA +'+d+'</option>').join('')
@@ -801,13 +1025,13 @@ function paintInbox(){
     if(inb.length){
       h += inb.map(q=>
          '<div class="req">'
-        +(q.fph?'<img src="'+sprite(q.fph)+'" style="width:44px;image-rendering:pixelated">':'')
+        +(q.fph?'<img class="face" src="'+sprite(q.fph)+'" data-zoom="'+q.fph+'|'+q.fn+' 님이 주는 개체|받으면 내 것이 됩니다">':'')
         +'<div class="t"><b style="color:var(--accent)">'+q.fn+'</b> 님이 이 개체를 주고'
         +' 내 <b>'+(myIdx[q.ta]||'?')+'번</b> 개체를 받고 싶어 합니다.'
         +(q.dna?'<br><b style="color:var(--accent)">DNA '+q.dna+'</b> 을(를) 얹었습니다.'
                :'<br><span style="color:var(--sub);font-size:11px">얹은 DNA 없음</span>')
         +'<br><span style="color:var(--sub);font-size:11px">겉모습만 보입니다 · 바꾸면 되돌릴 수 없습니다</span></div>'
-        +(q.tph?'<img src="'+sprite(q.tph)+'" style="width:32px;image-rendering:pixelated;opacity:.75">':'')
+        +(q.tph?'<img class="face sm" src="'+sprite(q.tph)+'" data-zoom="'+q.tph+'|내가 주는 개체|이 개체가 상대에게 갑니다">':'')
         +'<button class="go" data-ty="'+q.id+'">바꾸기</button>'
         +'<button class="warn" data-tn="'+q.id+'">거절</button></div>').join('');
     }
@@ -829,11 +1053,11 @@ function paintInbox(){
     h += inb.map(q=>{
       const sp = null;
       return '<div class="req">'
-        +(q.fph?'<img src="'+sprite(q.fph)+'" style="width:44px;image-rendering:pixelated">':'')
+        +(q.fph?'<img class="face" src="'+sprite(q.fph)+'" data-zoom="'+q.fph+'|'+q.fn+' 님의 개체|교배를 신청한 개체입니다">':'')
         +'<div class="t"><b style="color:var(--accent)">'+q.fn+'</b> 님의 개체가'
         +' 내 <b>'+(myIdx[q.ta]||'?')+'번</b> 개체와 교배를 신청했습니다.'
         +'<br><span style="color:var(--sub);font-size:11px">상대 '+CO(q.fr,q.fc)+' 구역</span></div>'
-        +(q.tph?'<img src="'+sprite(q.tph)+'" style="width:32px;image-rendering:pixelated;opacity:.75">':'')
+        +(q.tph?'<img class="face sm" src="'+sprite(q.tph)+'" data-zoom="'+q.tph+'|내 개체|상대가 고른 내 개체입니다">':'')
         +'<button class="go" data-y="'+q.id+'">수락</button>'
         +'<button class="warn" data-n="'+q.id+'">거절</button></div>';
     }).join('');

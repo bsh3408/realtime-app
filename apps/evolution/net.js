@@ -205,10 +205,21 @@
               function (e) { return { ok:false, msg:e.message }; });
     },
 
-    '유전자고치기': function (sid, aid, pos, val) {
-      return EVO.rpc('evo_edit_gene', {
-        p_player:+sid, p_token:EVO.token(), p_alien:+aid, p_pos:pos, p_val:val
-      }).then(function (남은) { return { ok:true, dna:남은 }; },
+    /* 유전자 변형 — 어느 자리가 어떻게 바뀔지는 서버가 무작위로 정한다.
+       학생이 «설계» 하지 못하게 하려는 것이다. 대신 무엇이 바뀌었는지는 알려 준다 */
+    '유전자변형': function (sid, aid) {
+      return EVO.rpc('evo_mutate_gene', {
+        p_player:+sid, p_token:EVO.token(), p_alien:+aid
+      }).then(function (r) {
+        return { ok:true, dna:r.dna, pos:r.pos, from:r.from, to:r.to };
+      }, function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    /* 정찰 — 이번 세대 동안 적응도를 볼 수 있게 산다.
+       적응도 계산은 학생 브라우저의 RULES 가 한다. 서버는 «샀다» 만 적는다 */
+    '정찰': function (sid) {
+      return EVO.rpc('evo_scout', { p_player:+sid, p_token:EVO.token() })
+        .then(function (남은) { return { ok:true, dna:남은 }; },
               function (e) { return { ok:false, msg:e.message }; });
     },
 
@@ -444,7 +455,8 @@
                  base:st.base, span:st.span, lifeCost:st.lifeCost, lifeExtra:st.lifeExtra,
                  kids:st.kids, lifeKids:st.lifeKids, inbreed:st.inbreed,
                  cellCap:st.cellCap, crowd:st.crowd, kid2:st.kid2, kid4:st.kid4,
-                 tradeMax:st.tradeMax, tradeDnaMax:st.tradeDnaMax },
+                 tradeMax:st.tradeMax, tradeDnaMax:st.tradeDnaMax,
+                 editCost:st.editCost, scoutCost:st.scoutCost },
       /* 잡종 강세(HET)와 구역별 유리 형질(fav)은 일부러 보내지 않는다.
          학생이 살아남는 것을 보고 스스로 알아내야 한다 */
       me:{ id:String(me.id), name:me.name,
@@ -459,6 +471,8 @@
              return v;
            }),
            dna: me.dna || 0, dnaUsed: me.dna_used || 0, trades:거래낸수,
+           /* 정찰을 산 학생만 적응도를 본다. 계산은 학생 브라우저가 한다 */
+           scout: (me.scout_turn != null && me.scout_turn === g.turn),
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },
       cells:cells, near:남, inbox:inbox, sent:sent, 경보:경보,
       /* 재해가 학생 화면에 안 뜨면 «왜 죽었는지» 를 알 방법이 없다.

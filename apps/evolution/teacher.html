@@ -202,6 +202,8 @@
             <!-- 거래가 수업을 잡아먹으면 «세대당 거래» 를 0 으로 두면 곧바로 꺼진다 -->
             <div><label class="f">세대당 거래 횟수 (0=끔)</label><input type="number" id="cfgTradeMax"></div>
             <div><label class="f">거래에 얹는 DNA 상한</label><input type="number" id="cfgTradeDna"></div>
+            <div><label class="f">유전자 변형 1회 값(DNA)</label><input type="number" id="cfgEdit"></div>
+            <div><label class="f">정찰 값(DNA·세대당)</label><input type="number" id="cfgScout"></div>
           </div>
           <div style="margin-top:8px">
             <label class="f">시간 초과 자동 교배 범위</label>
@@ -467,6 +469,7 @@ function fillCfg(){
   $('#cfgLifeCost').value=s.lifeCost; $('#cfgLifeExtra').value=s.lifeExtra;
   $('#cfgEvent').value=s.eventRate; $('#cfgCellCap').value=s.cellCap; $('#cfgAward').value=s.awardDna;
   $('#cfgTradeMax').value=s.tradeMax; $('#cfgTradeDna').value=s.tradeDnaMax;
+  $('#cfgEdit').value=s.editCost; $('#cfgScout').value=s.scoutCost;
 }
 $('#btnSave').onclick=async ()=>{
   const patch={
@@ -475,7 +478,8 @@ $('#btnSave').onclick=async ()=>{
     cap:+$('#cfgCap').value, start:+$('#cfgStart').value,
     lifeCost:+$('#cfgLifeCost').value, lifeExtra:+$('#cfgLifeExtra').value,
     eventRate:+$('#cfgEvent').value, cellCap:+$('#cfgCellCap').value, awardDna:+$('#cfgAward').value,
-    tradeMax:+$('#cfgTradeMax').value, tradeDnaMax:+$('#cfgTradeDna').value
+    tradeMax:+$('#cfgTradeMax').value, tradeDnaMax:+$('#cfgTradeDna').value,
+    editCost:+$('#cfgEdit').value, scoutCost:+$('#cfgScout').value
   };
   try{ const r=await RUN('설정변경',CODE,patch);
     $('#cfgMsg').innerHTML='<div class="msg">'+(r.ok?'저장했습니다.':r.msg)+'</div>'; await poll(); }

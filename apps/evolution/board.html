@@ -154,6 +154,7 @@
       <button id="mClose">닫기 ✕</button>
     </div>
     <canvas id="scene" width="1180" height="440"></canvas>
+    <div id="mDesc"></div>
     <div class="plabel" style="margin:14px 0 0">이 구역의 유전자 풀</div>
     <div class="bars" id="mBars"></div>
   </div>
@@ -317,6 +318,12 @@ function 팝업그리기(r,c,조용히){
   const list = T.cells[r*5+c].list;
   $('#mNm').textContent = b.emoji + ' ' + b.name + ' — ' + CO(r,c);
   $('#mSub').textContent = list.length ? (list.length + '마리가 살고 있습니다') : '아무도 없습니다';
+  /* 구역 설명 — 무엇이 유리한지는 말하지 않는다. 어떤 곳인지만 적는다.
+     빔으로 크게 띄워 놓고 반 전체가 같이 읽으며 추리하는 자리다 */
+  $('#mDesc').innerHTML = b.설명
+    ? '<div style="margin:14px 0 0;padding:12px 14px;background:#0f1626;border:1px solid #26314d;'
+      +'border-radius:12px;font-size:17px;line-height:1.85">'+b.설명+'</div>'
+    : '';
 
   // 배우 만들기 (개체가 바뀌었을 때만 새로)
   const key = list.map(a=>a.sid+a.ph).join('|');
