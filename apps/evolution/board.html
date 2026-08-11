@@ -49,6 +49,13 @@
 
  /* 유전자 풀 */
  .sparks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ table.heat{border-collapse:collapse;font-size:11.5px;width:100%}
+ table.heat th,table.heat td{border:1px solid var(--line);padding:4px 5px;text-align:center;
+   white-space:nowrap}
+ table.heat th{background:var(--panel2);color:var(--sub);font-size:10.5px;font-weight:700}
+ table.heat th.bn{text-align:left;font-size:12px;color:var(--ink)}
+ table.heat td.v{font-family:ui-monospace,monospace;font-weight:800;color:#fff}
+ table.heat td.n{color:var(--sub);font-family:ui-monospace,monospace}
  .sp1{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:8px 9px}
  .sp1 .t{font-size:12px;color:var(--sub);font-weight:700;display:flex;justify-content:space-between}
  .sp1 .t b{color:var(--accent2);font-family:ui-monospace,monospace;font-size:13px}
@@ -122,10 +129,16 @@
     </div>
 
     <div class="panel">
-      <div class="plabel">유전자 풀 — 우성 대립유전자의 비율(%) · 🔒는 겉모습에 안 드러나는 형질</div>
-      <div class="sparks" id="sparks"></div>
-      <div class="msg">올라가는 선이 <b style="color:var(--accent)">지금 환경이 고르고 있는</b> 형질입니다.
-        무엇이 왜 올라가는지는 알려 주지 마세요 — 학생이 알아내야 합니다.</div>
+      <div class="plabel">환경별 유전자 풀 — 우성 대립유전자 비율(%) · 🔒는 겉모습에 안 드러나는 형질</div>
+      <div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
+      <div class="msg"><b style="color:var(--accent2)">가로로 읽지 말고 세로로 읽으세요.</b>
+        같은 형질인데 환경마다 숫자가 반대로 가는 것이 자연선택입니다.
+        (반 전체를 합치면 서로 상쇄돼서 아무것도 안 보입니다)</div>
+      <details style="margin-top:10px">
+        <summary style="cursor:pointer;font-size:12.5px;color:var(--sub);font-weight:700">
+          반 전체 합계의 세대별 변화 (참고용 — 대개 평평합니다)</summary>
+        <div class="sparks" id="sparks" style="margin-top:8px"></div>
+      </details>
     </div>
   </div>
 </section>
@@ -195,6 +208,7 @@ function paint(){
   // 판이 그대로면 다시 그리지 않는다 — 빔이 깜빡인다
   const sig = JSON.stringify([T.board, T.cells.map(c=>c.list.length), T.turn]);
   if (sig !== 보드사인) { 보드사인 = sig; paintBoard(); }
+  paintHeat();
   paintSparks();
   if (모달칸) 팝업그리기(모달칸.r, 모달칸.c, true);
 }
@@ -228,6 +242,38 @@ function paintBoard(){
 function 구역빈도(r,c){
   const A = (T._aliens||[]).filter(a=>a.alive && a.r===r && a.c===c);
   return RULES.빈도(A);
+}
+
+/* 환경별 유전자 풀 — 같은 형질이 환경마다 반대로 가는 것을 나란히 보여 준다.
+   반 전체를 합치면 서로 상쇄돼서 12세대를 돌려도 50%에서 안 움직인다.
+   구역별로 나누면 20%p 넘게 벌어진다 — 자연선택이 보이는 건 이쪽이다. */
+function paintHeat(){
+  const A = T._aliens || [];
+  // 바이옴별로 개체를 모은다
+  const 통 = {};
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const k = T.board[r][c];
+    if(!통[k]) 통[k]=[];
+    A.forEach(a=>{ if(a.alive && a.r===r && a.c===c) 통[k].push(a); });
+  }
+  const 있는것 = RULES.BIOMES.filter(b=>통[b.key] && 통[b.key].length>0);
+  if(!있는것.length){ $('#heat').innerHTML='<tr><td>아직 개체가 없습니다.</td></tr>'; return; }
+
+  let h = '<tr><th class="bn">환경</th><th>마리</th>'
+        + GENES.map(G=>'<th>'+(G.보임?'':'🔒')+G.n+'</th>').join('') + '</tr>';
+  있는것.forEach(b=>{
+    const f = RULES.빈도(통[b.key]);
+    h += '<tr><th class="bn">'+b.emoji+' '+b.name+'</th><td class="n">'+f.n+'</td>'
+      + GENES.map(G=>{
+          const v = f.f[G.k];
+          // 50에서 얼마나 벗어났나로 색을 준다 — 치우친 칸이 눈에 띈다
+          const d = (v-50)/50;
+          const bg = d>=0 ? 'rgba(124,240,200,'+(Math.abs(d)*0.55).toFixed(2)+')'
+                          : 'rgba(255,143,176,'+(Math.abs(d)*0.55).toFixed(2)+')';
+          return '<td class="v" style="background:'+bg+'">'+v+'</td>';
+        }).join('') + '</tr>';
+  });
+  $('#heat').innerHTML = h;
 }
 
 function paintSparks(){

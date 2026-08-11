@@ -113,7 +113,10 @@
         this.get('evo_game?id=eq.'+gid+'&select=*'),
         this.get('evo_player_public?game_id=eq.'+gid+'&select=*'),
         this.get('evo_alien?game_id=eq.'+gid+'&select=*'),
-        this.get('evo_request?game_id=eq.'+gid+'&state=eq.pending&select=*')
+        /* 아직 답이 없는 신청 + 이번 세대의 «거래» 는 답이 끝난 것까지 가져온다.
+           거래 신청 횟수를 셀 때 거절당한 것도 세야 하기 때문이다.
+           안 그러면 거절당할 때마다 다시 찔러 볼 수 있다 */
+        this.get('evo_request?game_id=eq.'+gid+'&or=(state.eq.pending,kind.eq.trade)&select=*')
       ]).then(function (a) {
         var g = a[0] && a[0][0];
         if (g) { 나.game = g; }
@@ -206,12 +209,6 @@
       return EVO.rpc('evo_edit_gene', {
         p_player:+sid, p_token:EVO.token(), p_alien:+aid, p_pos:pos, p_val:val
       }).then(function (남은) { return { ok:true, dna:남은 }; },
-              function (e) { return { ok:false, msg:e.message }; });
-    },
-
-    '입양': function (sid, cost) {
-      return EVO.rpc('evo_adopt', { p_player:+sid, p_token:EVO.token(), p_cost:cost })
-        .then(function (남은) { return { ok:true, dna:남은 }; },
               function (e) { return { ok:false, msg:e.message }; });
     },
 
@@ -392,20 +389,33 @@
                 r:b.r, c:b.c, ph:R.표현형문자열(b.geno), bred:b.bred?1:0 });
     }
 
-    // 신청함 — 상대가 어떻게 생겼는지 붙여 준다
+    // 신청함 — 상대가 어떻게 생겼는지 붙여 준다.
+    // 교배 신청과 거래 신청이 같은 표에 있으므로 kind 를 그대로 실어 보낸다.
     var byId = {};
     for (i=0;i<aliens.length;i++) byId[aliens[i].id] = aliens[i];
-    var inbox=[], sent=[];
+    var inbox=[], sent=[], 거래낸수=0;
     for (i=0;i<판.requests.length;i++) {
       var q = 판.requests[i];
+      var kind = q.kind || 'mate';
+      // 거래 신청은 그 세대에만 살아 있다. 지난 세대 것은 없는 셈 친다
+      if (kind === 'trade' && q.turn !== g.turn) continue;
       var A = byId[q.from_alien], B = byId[q.to_alien];
       if (!A || !B) continue;
-      if (B.player === pid) {
-        inbox.push({ id:q.id, fn:이름표[A.player]||'?', fa:A.id, ta:B.id,
+      if (B.player === pid && q.state === 'pending') {
+        inbox.push({ id:q.id, kind:kind, dna:q.dna||0,
+                     fn:이름표[A.player]||'?', fa:A.id, ta:B.id,
                      fph:R.표현형문자열(A.geno), fr:A.r, fc:A.c,
                      tph:R.표현형문자열(B.geno) });
       }
-      if (A.player === pid) sent.push({ id:q.id, tn:이름표[B.player]||'?', state:q.state });
+      /* 거래는 성사되면 개체 주인이 뒤바뀐다. 그래서 «누가 신청했나» 는
+         개체를 타고 찾으면 안 되고 from_player 를 봐야 한다 */
+      var 낸사람 = (kind === 'trade') ? q.from_player : A.player;
+      if (낸사람 === pid) {
+        if (q.state === 'pending')
+          sent.push({ id:q.id, kind:kind, dna:q.dna||0,
+                      tn:이름표[B.player]||'?', state:q.state });
+        if (kind === 'trade') 거래낸수++;   // 거절당한 것도 센다
+      }
     }
 
     // 이번 세대에 태어난 개체 — 숨은 열성이 드러나는 순간
@@ -433,7 +443,8 @@
       settings:{ moveMax:2, breedMax:1, cap:st.cap, start:st.start,
                  base:st.base, span:st.span, lifeCost:st.lifeCost, lifeExtra:st.lifeExtra,
                  kids:st.kids, lifeKids:st.lifeKids, inbreed:st.inbreed,
-                 cellCap:st.cellCap, crowd:st.crowd, kid2:st.kid2, kid4:st.kid4 },
+                 cellCap:st.cellCap, crowd:st.crowd, kid2:st.kid2, kid4:st.kid4,
+                 tradeMax:st.tradeMax, tradeDnaMax:st.tradeDnaMax },
       /* 잡종 강세(HET)와 구역별 유리 형질(fav)은 일부러 보내지 않는다.
          학생이 살아남는 것을 보고 스스로 알아내야 한다 */
       me:{ id:String(me.id), name:me.name,
@@ -447,7 +458,7 @@
              if (a.alive) v.crowd = Math.max(0, (몰림[a.r+','+a.c]||0) - st.cellCap);
              return v;
            }),
-           dna: me.dna || 0, dnaUsed: me.dna_used || 0,
+           dna: me.dna || 0, dnaUsed: me.dna_used || 0, trades:거래낸수,
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },
       cells:cells, near:남, inbox:inbox, sent:sent, 경보:경보,
       /* 재해가 학생 화면에 안 뜨면 «왜 죽었는지» 를 알 방법이 없다.
@@ -508,7 +519,9 @@
       endAt: g.end_at ? Date.parse(g.end_at) : 0, now:EVO.지금(),
       forecast: g.forecast || '', settings:st, result:g.result,
       log:[], cells:cells, 학생별:학생별, 총개체:총,
-      대기신청:판.requests.length, hist:기록,
+      /* 판읽기 가 «끝난 거래» 까지 실어 오므로 아직 답이 없는 것만 센다 */
+      대기신청:판.requests.filter(function (q) { return q.state === 'pending'; }).length,
+      hist:기록,
       _aliens:aliens, _players:판.players
     };
   }

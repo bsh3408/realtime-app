@@ -180,7 +180,7 @@
   <div id="disBox"></div>
 
   <div class="panel hide" id="inboxPanel">
-    <div class="plabel">교배 신청함</div>
+    <div class="plabel" id="inboxLabel">교배 신청함</div>
     <div id="inbox"></div>
   </div>
 
@@ -456,7 +456,9 @@ function paintBoard(){
       const cur = pendingMoves[A.i] || {r:A.r,c:A.c};
       if(cur.r===r && cur.c===c) el.classList.add('here');
       else if(S.phase==='move' && cheb(from,{r,c})<=2) el.classList.add('reach');
-      else if(S.phase==='breed' && cheb(cur,{r,c})<=1) el.classList.add('mate');
+      // 교배도 거래도 «인접한 한 칸» 까지다. 어디까지 되는지 칸에 칠해 준다
+      else if((S.phase==='breed'||S.phase==='next'||S.phase==='env') && cheb(cur,{r,c})<=1)
+        el.classList.add('mate');
       else el.classList.add('dim');
     }
     el.onclick=()=>onCell(r,c);
@@ -541,7 +543,10 @@ function paintMine(){
 function paintAction(){
   const L=$('#actLabel'), B=$('#actBody');
   const A=selAlien();
-  $('#inboxPanel').classList.toggle('hide', S.phase!=='breed');
+  const 거래켬 = ((S.settings||{}).tradeMax==null ? 2 : S.settings.tradeMax) > 0;
+  const 거래때 = 거래켬 && (S.phase==='next' || S.phase==='env');
+  $('#inboxPanel').classList.toggle('hide', S.phase!=='breed' && !거래때);
+  $('#inboxLabel').textContent = 거래때 ? '거래 신청함' : '교배 신청함';
 
   if(S.phase==='setup'){
     L.textContent='유전자 제작';
@@ -667,22 +672,106 @@ function paintAction(){
     }
 
   }else if(S.phase==='next'){
-    L.textContent='세대 교체';
+    L.textContent='세대 교체' + (거래가능() ? ' — 지금은 거래할 수 있습니다' : '');
     B.innerHTML='<div class="msg i">자손이 태어나고 어버이는 죽습니다.<br>'
       +'<span style="color:var(--sub)"><b>수명이 긴</b> 개체만 한 세대를 더 삽니다.</span></div>';
+    paintTrade(B, A);
 
   }else if(S.phase==='env'){
-    L.textContent='환경 변화';
+    L.textContent='환경 변화' + (거래가능() ? ' — 지금은 거래할 수 있습니다' : '');
     B.innerHTML='<div class="msg r">행성의 기후가 바뀌었습니다. <b>어제 유리하던 형질이 오늘은 불리할 수 있습니다.</b><br>'
       +'<span style="color:var(--sub)">내 개체를 눌러 적응도가 어떻게 달라졌는지 확인해 보세요.</span></div>'
       +(S.forecast?'<div class="fc">📡 <b>다음</b> 세대 예보 — <b>'+S.forecast+'</b></div>':'')
       +(S.경보?'<div class="warn">📡 더듬이가 긴 개체 덕분에 먼저 알았습니다 — 다음 세대에 '
         +S.경보.emoji+' <b>'+S.경보.이름+'</b> 이(가) <b>'+S.경보.칸+'</b> 근처를 덮칩니다.</div>':'');
+    paintTrade(B, A);
 
   }else{
     L.textContent = S.phaseName||'대기';
     B.innerHTML='<div class="msg i">선생님 화면을 보세요.</div>';
   }
+}
+
+/* 선생님이 «세대당 거래 횟수» 를 0 으로 두면 거래는 아예 없는 기능이 된다 */
+function 거래가능(){
+  const v=(S.settings||{}).tradeMax;
+  return (v==null ? 2 : v) > 0;
+}
+
+/* ── 거래 ──────────────────────────────────────────────────────────
+   세대가 바뀌는 동안, 인접한 구역(대각선 포함)에 있는 친구의 개체와
+   내 개체를 «한 마리 대 한 마리» 로 맞바꾼다. 그냥은 안 바꿔 주니까
+   DNA 를 얹어서 설득한다.
+
+   남의 개체는 겉모습만 보인다. 그래서 겉은 멀쩡한데 숨은 형질이
+   엉망인 개체를 DNA 를 얹어 떠넘기는 것도 된다 — 그게 재미다.
+   대신 되돌릴 수 없고, 한 세대에 신청은 몇 번뿐이다. */
+function paintTrade(B, A){
+  const st = S.settings||{};
+  const 상한 = (st.tradeMax==null ? 2 : st.tradeMax);
+  if(!상한) return;                      // 선생님이 거래를 껐다
+  const 디엔에이상한 = (st.tradeDnaMax==null ? 3 : st.tradeDnaMax);
+  const 쓴수 = S.me.trades||0, 남은수 = Math.max(0, 상한-쓴수);
+  const 내DNA = S.me.dna||0;
+
+  let h = '<div class="plabel" style="margin-top:12px">🔄 거래 — 이번 세대에 '
+    +'<b style="color:var(--accent)">'+남은수+'번</b> 더 신청할 수 있습니다</div>';
+
+  if(!남은수){
+    B.insertAdjacentHTML('beforeend', h
+      +'<div class="msg i">이번 세대 거래 신청을 모두 썼습니다. 다음 세대에 다시 할 수 있습니다.</div>');
+    return;
+  }
+  if(!A || !A.a){
+    B.insertAdjacentHTML('beforeend', h
+      +'<div class="msg i">아래에서 <b>내 개체</b>를 하나 고르면, 바꿀 수 있는 상대가 나옵니다.</div>');
+    return;
+  }
+
+  const 상대 = (S.near||[]).filter(x=>cheb(x,A)<=1);
+  if(!상대.length){
+    B.insertAdjacentHTML('beforeend', h
+      +'<div class="msg r">인접한 구역에 친구의 개체가 없습니다. 다른 개체를 골라 보세요.</div>');
+    return;
+  }
+
+  const myIdx={}; (S.me.aliens||[]).forEach((m,i)=>myIdx[m.i]=i+1);
+  const 얹기상한 = Math.min(내DNA, 디엔에이상한);
+
+  h += '<div class="msg i" style="margin-top:0">내 <b>'+(myIdx[A.i]||'?')+'번</b> 개체를 주고 상대의 개체를 받습니다. '
+    +'설득이 필요하면 <b>DNA</b>를 얹으세요 (한 번에 '+디엔에이상한+'까지, 지금 가진 DNA '+내DNA+').'
+    +'<br><span style="color:var(--sub)">남의 개체는 <b>겉모습만</b> 보입니다. 숨은 형질은 받아서 교배해 봐야 압니다. '
+    +'<b style="color:var(--rec)">한 번 바꾸면 되돌릴 수 없습니다.</b></span></div>';
+
+  h += 상대.map((x,i)=>
+     '<div class="req"><img src="'+sprite(x.ph)+'" style="width:44px;image-rendering:pixelated">'
+    +'<div class="t"><b style="color:var(--accent)">'+x.name+'</b> 님의 개체'
+    +'<br><span style="color:var(--sub);font-size:11px">'+CO(x.r,x.c)+' 구역</span></div>'
+    +'<select data-d="'+i+'" style="background:#0d1830;color:#e8eefc;border:1px solid #2a3a5e;'
+      +'border-radius:8px;padding:5px 6px;font:inherit;font-size:12px">'
+    + Array.from({length:얹기상한+1},(_,d)=>'<option value="'+d+'">DNA +'+d+'</option>').join('')
+    +'</select>'
+    +'<button class="go" data-t="'+i+'">거래 신청</button></div>').join('');
+
+  B.insertAdjacentHTML('beforeend', h);
+
+  $$('#actBody button[data-t]').forEach(btn=>{
+    btn.onclick=async ()=>{
+      const i=+btn.dataset.t, x=상대[i];
+      const d=+($('#actBody select[data-d="'+i+'"]')||{value:0}).value;
+      // 되돌릴 수 없으니 한 번은 물어본다
+      if(!confirm('내 '+(myIdx[A.i]||'?')+'번 개체를 주고 '+x.name+' 님의 개체를 받습니다.'
+        +(d?'\nDNA '+d+' 을(를) 얹습니다.':'')
+        +'\n\n상대가 수락하면 되돌릴 수 없습니다. 신청할까요?')) return;
+      btn.disabled=true; btn.textContent='…';
+      try{
+        const r=await RUN('거래신청', SID, A.i, x.i, d);
+        if(!r.ok){ btn.disabled=false; btn.textContent='다시'; alert(r.msg); }
+        else btn.textContent='신청함';
+        tick(true);
+      }catch(e){ btn.disabled=false; btn.textContent='다시'; }
+    };
+  });
 }
 
 /* 이동 자동 저장 */
@@ -697,12 +786,43 @@ function queueSave(){
 
 /* ── 신청함 ── */
 function paintInbox(){
-  if(S.phase!=='breed') return;
+  const 거래켬 = ((S.settings||{}).tradeMax==null ? 2 : S.settings.tradeMax) > 0;
+  const 거래때 = 거래켬 && (S.phase==='next' || S.phase==='env');
+  if(S.phase!=='breed' && !거래때) return;
   const box=$('#inbox');
-  const inb=S.inbox||[];
-  const sent=(S.sent||[]).filter(q=>q.state==='pending');
+  const 종류 = 거래때 ? 'trade' : 'mate';
+  const inb=(S.inbox||[]).filter(q=>(q.kind||'mate')===종류);
+  const sent=(S.sent||[]).filter(q=>q.state==='pending' && (q.kind||'mate')===종류);
   const myIdx={}; (S.me.aliens||[]).forEach((m,i)=>myIdx[m.i]=i+1);
   let h='';
+
+  if(거래때){
+    // 거래 — 겉모습만 보고 판단해야 한다. 받고 나서야 숨은 형질을 안다
+    if(inb.length){
+      h += inb.map(q=>
+         '<div class="req">'
+        +(q.fph?'<img src="'+sprite(q.fph)+'" style="width:44px;image-rendering:pixelated">':'')
+        +'<div class="t"><b style="color:var(--accent)">'+q.fn+'</b> 님이 이 개체를 주고'
+        +' 내 <b>'+(myIdx[q.ta]||'?')+'번</b> 개체를 받고 싶어 합니다.'
+        +(q.dna?'<br><b style="color:var(--accent)">DNA '+q.dna+'</b> 을(를) 얹었습니다.'
+               :'<br><span style="color:var(--sub);font-size:11px">얹은 DNA 없음</span>')
+        +'<br><span style="color:var(--sub);font-size:11px">겉모습만 보입니다 · 바꾸면 되돌릴 수 없습니다</span></div>'
+        +(q.tph?'<img src="'+sprite(q.tph)+'" style="width:32px;image-rendering:pixelated;opacity:.75">':'')
+        +'<button class="go" data-ty="'+q.id+'">바꾸기</button>'
+        +'<button class="warn" data-tn="'+q.id+'">거절</button></div>').join('');
+    }
+    if(sent.length) h += '<div class="msg i">보낸 거래 '+sent.length+'건 — 상대의 답을 기다립니다.<br>'
+      +'<span style="color:var(--sub)">옆 친구에게 말로 설득해 보세요. 세대가 넘어가면 신청은 사라집니다.</span></div>';
+    if(!h) h='<div class="msg i">받은 거래 신청이 없습니다.</div>';
+    box.innerHTML=h;
+    $$('#inbox button[data-ty]').forEach(b=>b.onclick=()=>{
+      if(!confirm('개체를 맞바꿉니다. 되돌릴 수 없습니다. 바꿀까요?')) return;
+      tradeAnswer(b.dataset.ty,true,b);
+    });
+    $$('#inbox button[data-tn]').forEach(b=>b.onclick=()=>tradeAnswer(b.dataset.tn,false,b));
+    return;
+  }
+
   if(inb.length){
     // 겉모습을 보고 짝을 고르는 게 이 게임의 핵심이다.
     // 이름만 띄우면 학생은 아무거나 누르게 된다.
@@ -728,6 +848,11 @@ function paintInbox(){
 async function answer(id, ok, btn){
   btn.disabled=true;
   try{ const r=await RUN('교배응답', SID, id, ok); if(!r.ok) alert(r.msg); tick(true); }
+  catch(e){ btn.disabled=false; }
+}
+async function tradeAnswer(id, ok, btn){
+  btn.disabled=true;
+  try{ const r=await RUN('거래응답', SID, id, ok); if(!r.ok) alert(r.msg); tick(true); }
   catch(e){ btn.disabled=false; }
 }
 

@@ -191,11 +191,17 @@
             <div><label class="f">이동 시간(초) 0=무제한</label><input type="number" id="cfgMove"></div>
             <div><label class="f">교배 시간(초) 0=무제한</label><input type="number" id="cfgBreed"></div>
             <div><label class="f">돌연변이율 (0~1)</label><input type="number" id="cfgMut" step="0.01"></div>
-            <div><label class="f">교배 1회당 자손 수</label><input type="number" id="cfgKids"></div>
+
             <div><label class="f">개체 수 상한</label><input type="number" id="cfgCap"></div>
             <div><label class="f">시작 개체 수</label><input type="number" id="cfgStart"></div>
             <div><label class="f">수명 대가(생존 확률에서 뺌)</label><input type="number" id="cfgLifeCost" step="0.01"></div>
             <div><label class="f">수명이 더 사는 세대</label><input type="number" id="cfgLifeExtra"></div>
+            <div><label class="f">재해 확률 (0~1)</label><input type="number" id="cfgEvent" step="0.05"></div>
+            <div><label class="f">한 칸 수용력</label><input type="number" id="cfgCellCap"></div>
+            <div><label class="f">상 하나당 주는 DNA</label><input type="number" id="cfgAward"></div>
+            <!-- 거래가 수업을 잡아먹으면 «세대당 거래» 를 0 으로 두면 곧바로 꺼진다 -->
+            <div><label class="f">세대당 거래 횟수 (0=끔)</label><input type="number" id="cfgTradeMax"></div>
+            <div><label class="f">거래에 얹는 DNA 상한</label><input type="number" id="cfgTradeDna"></div>
           </div>
           <div style="margin-top:8px">
             <label class="f">시간 초과 자동 교배 범위</label>
@@ -294,8 +300,10 @@ function paintAwards(){
     ['번성상','개체 수가 가장 많은 사람','live','마리'],
     ['적응상','평균 적응도가 가장 높은 사람','fit','점'],
     ['개척상','가장 여러 지형에 퍼진 사람','biomes','곳'],
-    ['교류상','다른 사람과 가장 많이 교배한 사람','cross','번']
+    ['교류상','다른 사람과 가장 많이 교배한 사람','cross','번'],
+    ['DNA왕','DNA 를 가장 많이 가진 사람','dna','DNA']
   ];
+  window.__수상 = 상.map(([n,d,k])=>{ const w=최고(k); return { 상:n, id:w.id, name:w.name }; });
   $('#awards').innerHTML='<table><tr><th>상</th><th>받는 사람</th><th class="n">기록</th></tr>'
     +상.map(([n,d,k,u])=>{
       const w=최고(k);
@@ -303,7 +311,19 @@ function paintAwards(){
         +'<span style="color:var(--sub);font-size:11px">'+d+'</span></td>'
         +'<td><span class="dot" style="background:'+colorOf(w.id)+'"></span>'+w.name+'</td>'
         +'<td class="n">'+w[k]+u+'</td></tr>';
-    }).join('')+'</table>';
+    }).join('')+'</table>'
+    +'<div style="margin-top:9px"><button class="sm go" id="btnAward">'
+    +'수상자에게 DNA '+((T.settings&&T.settings.awardDna)||3)+'씩 주기</button>'
+    +'<span id="awardMsg" style="margin-left:8px;font-size:12px;color:var(--sub)"></span></div>';
+  $('#btnAward').onclick=async ()=>{
+    const amt=(T.settings&&T.settings.awardDna)||3;
+    const 목록=(window.__수상||[]).map(x=>({player:+x.id, amount:amt}));
+    if(!목록.length) return;
+    $('#btnAward').disabled=true;
+    const r=await RUN('DNA지급',CODE,목록);
+    $('#awardMsg').textContent = r.ok ? '주었습니다.' : r.msg;
+    await poll();
+  };
 }
 let tRef=Date.now();
 function paintTimer(){
@@ -368,9 +388,25 @@ function paintStudents(){
     '<tr><td><span class="dot" style="background:'+colorOf(s.id)+'"></span>'+s.name+'</td>'
     +'<td class="n"'+(s.live?'':' style="color:var(--bad);font-weight:800"')+'>'+s.live+'</td>'
     +'<td class="n">'+(s.fit||0)+'</td><td class="n">'+(s.biomes||0)+'</td><td class="n">'+(s.cross||0)+'</td>'
-    +'<td class="n" style="color:'+(s.ready?'var(--accent)':'var(--sub)')+'">'+(s.ready?'준비':'대기')+'</td></tr>').join('');
+    +'<td class="n"><b style="color:var(--accent)">'+(s.dna||0)+'</b></td>'
+    +'<td class="n"><button class="sm dnaBtn" data-p="'+s.id+'" data-d="-1">−</button>'
+    +'<button class="sm dnaBtn" data-p="'+s.id+'" data-d="1">＋</button>'
+    +'<button class="sm dnaSet" data-p="'+s.id+'" data-n="'+s.name+'" data-v="'+(s.dna||0)+'">✎</button></td>'
+    +'</tr>').join('');
   $('#stTable').innerHTML='<tr><th>학생</th><th class="n">개체</th><th class="n">적응</th>'
-    +'<th class="n">지형</th><th class="n">교류</th><th class="n">상태</th></tr>'+rows;
+    +'<th class="n">지형</th><th class="n">교류</th><th class="n">DNA</th><th></th></tr>'+rows;
+  $$('#stTable .dnaBtn').forEach(b=>b.onclick=async ()=>{
+    const 지금 = (T.학생별.find(x=>x.id===b.dataset.p)||{}).dna||0;
+    b.disabled=true;
+    await RUN('DNA설정',CODE,b.dataset.p, Math.max(0, 지금 + (+b.dataset.d)));
+    await poll();
+  });
+  $$('#stTable .dnaSet').forEach(b=>b.onclick=async ()=>{
+    const v = prompt(b.dataset.n+' 의 DNA 를 얼마로 할까요? (수업 전 문제 점수)', b.dataset.v);
+    if(v===null) return;
+    await RUN('DNA설정',CODE,b.dataset.p, Math.max(0, parseInt(v,10)||0));
+    await poll();
+  });
 }
 
 function paintSparks(){
@@ -426,16 +462,20 @@ $$('button[data-scope]').forEach(b=>b.onclick=async ()=>{
 function fillCfg(){
   const s=T.settings;
   $('#cfgMove').value=s.moveSec; $('#cfgBreed').value=s.breedSec;
-  $('#cfgMut').value=s.mut; $('#cfgKids').value=s.kids;
+  $('#cfgMut').value=s.mut;
   $('#cfgCap').value=s.cap; $('#cfgStart').value=s.start;
   $('#cfgLifeCost').value=s.lifeCost; $('#cfgLifeExtra').value=s.lifeExtra;
+  $('#cfgEvent').value=s.eventRate; $('#cfgCellCap').value=s.cellCap; $('#cfgAward').value=s.awardDna;
+  $('#cfgTradeMax').value=s.tradeMax; $('#cfgTradeDna').value=s.tradeDnaMax;
 }
 $('#btnSave').onclick=async ()=>{
   const patch={
     moveSec:+$('#cfgMove').value, breedSec:+$('#cfgBreed').value,
-    mut:+$('#cfgMut').value, kids:+$('#cfgKids').value,
+    mut:+$('#cfgMut').value,
     cap:+$('#cfgCap').value, start:+$('#cfgStart').value,
-    lifeCost:+$('#cfgLifeCost').value, lifeExtra:+$('#cfgLifeExtra').value
+    lifeCost:+$('#cfgLifeCost').value, lifeExtra:+$('#cfgLifeExtra').value,
+    eventRate:+$('#cfgEvent').value, cellCap:+$('#cfgCellCap').value, awardDna:+$('#cfgAward').value,
+    tradeMax:+$('#cfgTradeMax').value, tradeDnaMax:+$('#cfgTradeDna').value
   };
   try{ const r=await RUN('설정변경',CODE,patch);
     $('#cfgMsg').innerHTML='<div class="msg">'+(r.ok?'저장했습니다.':r.msg)+'</div>'; await poll(); }
