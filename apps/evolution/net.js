@@ -405,7 +405,7 @@
       if (!관심[b.r+','+b.c]) continue;
       // 남의 개체는 «겉모습» 만 나간다. 숨은 열성은 교배해 봐야 안다
       남.push({ sid:String(b.player), name:이름표[b.player]||'?', i:b.id,
-                r:b.r, c:b.c, ph:R.표현형문자열(b.geno), bred:b.bred?1:0 });
+                r:b.r, c:b.c, ph:R.표현형문자열(b.geno, board[b.r][b.c]), bred:b.bred?1:0 });
     }
 
     // 신청함 — 상대가 어떻게 생겼는지 붙여 준다.
@@ -423,8 +423,8 @@
       if (B.player === pid && q.state === 'pending') {
         inbox.push({ id:q.id, kind:kind, dna:q.dna||0,
                      fn:이름표[A.player]||'?', fa:A.id, ta:B.id,
-                     fph:R.표현형문자열(A.geno), fr:A.r, fc:A.c,
-                     tph:R.표현형문자열(B.geno) });
+                     fph:R.표현형문자열(A.geno, board[A.r][A.c]), fr:A.r, fc:A.c,
+                     tph:R.표현형문자열(B.geno, board[B.r][B.c]) });
       }
       /* 거래는 성사되면 개체 주인이 뒤바뀐다. 그래서 «누가 신청했나» 는
          개체를 타고 찾으면 안 되고 from_player 를 봐야 한다 */
@@ -453,6 +453,20 @@
 
     var 짝수 = 0;
     for (i=0;i<내것.length;i++) if (내것[i].alive && 내것[i].bred) 짝수++;
+
+    /* 새 형질 — 반 전체에 몇 마리나 퍼졌는가, 그중 내 것은 몇 마리인가.
+       «생겼다가 사라졌다» 인지 «퍼지고 있다» 인지는 이 숫자로만 알 수 있다 */
+    var 새현황 = [];
+    for (i=0;i<R.새형질들.length;i++) {
+      var NG2 = R.새형질들[i], 자리2 = R.자리(NG2.k), 전체=0, 내수=0;
+      for (var z=0;z<aliens.length;z++) {
+        if (!aliens[z].alive) continue;
+        if (+aliens[z].geno.charAt(자리2) >= 1) {
+          전체++; if (aliens[z].player === pid) 내수++;
+        }
+      }
+      if (전체) 새현황.push({ k:NG2.k, 이름:NG2.n, emoji:NG2.emoji, 전체:전체, 내것:내수 });
+    }
 
     return {
       ok:true, seq:g.seq, phase:g.phase, phaseName:R.PHASE_NAME[g.phase]||g.phase,
@@ -484,7 +498,7 @@
            /* 정찰을 산 학생만 적응도를 본다. 계산은 학생 브라우저가 한다 */
            scout: (me.scout_turn != null && me.scout_turn === g.turn),
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },
-      cells:cells, near:남, inbox:inbox, sent:sent, 경보:경보,
+      cells:cells, near:남, inbox:inbox, sent:sent, 경보:경보, 새형질:새현황,
       /* 재해가 학생 화면에 안 뜨면 «왜 죽었는지» 를 알 방법이 없다.
          board.html 은 뒤에 앉은 학생에게 안 보인다 */
       result: g.result
@@ -524,7 +538,7 @@
       var p = 통[a.player];
       총++;
       cells[a.r*5+a.c].list.push({ sid:String(a.player),
-        name:(p&&p.name)||'?', ph:R.표현형문자열(a.geno), bred:a.bred?1:0 });
+        name:(p&&p.name)||'?', ph:R.표현형문자열(a.geno, board[a.r][a.c]), bred:a.bred?1:0 });
       if (p) { p.live++; p._fit += R.적응도(a.geno, board[a.r][a.c]); p._b[board[a.r][a.c]]=1; }
     }
     var 학생별=[];
@@ -543,6 +557,19 @@
       endAt: g.end_at ? Date.parse(g.end_at) : 0, now:EVO.지금(),
       forecast: g.forecast || '', settings:st, result:g.result,
       log:[], cells:cells, 학생별:학생별, 총개체:총,
+      새형질: (function () {
+        var out=[];
+        for (var i=0;i<R.새형질들.length;i++) {
+          var G=R.새형질들[i], j=R.자리(G.k), n=0, 사람={};
+          for (var z=0;z<aliens.length;z++) {
+            if (!aliens[z].alive) continue;
+            if (+aliens[z].geno.charAt(j) >= 1) { n++; 사람[aliens[z].player]=1; }
+          }
+          if (n) out.push({ k:G.k, 이름:G.n, emoji:G.emoji, 마리:n,
+                            사람수:Object.keys(사람).length });
+        }
+        return out;
+      })(),
       /* 판읽기 가 «끝난 거래» 까지 실어 오므로 아직 답이 없는 것만 센다 */
       대기신청:판.requests.filter(function (q) { return q.state === 'pending'; }).length,
       hist:기록,
@@ -622,8 +649,19 @@
               { p_code:code, p_game:EVO.gameId, p_aliens:보낼것 })
             .then(function () {
               patch.turn = rep.세대;
+              /* 없던 형질이 생겼으면 이름과 «누구네 개체에서» 를 함께 올린다.
+                 이 수업의 알맹이라, 놓치면 그냥 지나가 버린다 */
+              var 이름표2 = {};
+              for (var q2=0;q2<판.players.length;q2++)
+                이름표2[판.players[q2].id] = 판.players[q2].name;
+              var 새소식 = (rep.새형질||[]).map(function (x) {
+                return { 형질:x.형질, 이름:x.이름, emoji:x.emoji, 마리:x.마리,
+                         누구:이름표2[x.player] || '?', player:String(x.player),
+                         칸:String.fromCharCode(65+x.r) + (x.c+1) };
+              });
               patch.result = { 단계:'세대 교체', 세대:rep.세대, 자손:rep.자손,
                                사망:rep.사망, 장수생존:rep.장수생존, 구제:rep.구제,
+                               새형질:새소식,
                                자동교배:{ 성사:자동.성사, 실패:자동.실패 } };
               return 밀기(code, patch);
             });

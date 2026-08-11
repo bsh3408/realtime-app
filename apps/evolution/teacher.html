@@ -115,6 +115,7 @@
     <button class="primary" id="btnNext">다음 단계 ▶</button>
   </div>
 
+  <div id="novelBar" class="res hide" style="margin-bottom:12px;border-color:var(--accent)"></div>
   <div id="doneBar" class="res hide" style="margin-bottom:12px"></div>
   <div id="resBox"></div>
 
@@ -389,6 +390,26 @@ function paintResult(){
      +'</div>';
   }
   box.innerHTML=h;
+}
+
+/* 없던 형질이 나타났는가 — 이 수업의 알맹이라 맨 위에 크게 둔다 */
+function paintNovel(){
+  const L = T.새형질 || [], 방금 = (T.result && T.result.새형질) || [];
+  const box = $('#novelBar');
+  box.classList.toggle('hide', !L.length && !방금.length);
+  if(!L.length && !방금.length) return;
+  box.innerHTML =
+    (방금.length
+      ? '<span class="big">' + 방금.map(x=>x.emoji+' '+x.이름).join(' · ')
+        + ' 이(가) 방금 나타났습니다!</span>'
+        + 방금.map(x=>'<b>'+x.누구+'</b> 님의 '+x.칸+' 구역에서 '
+            +(x.마리>1?'한배 '+x.마리+'마리':'한 마리')).join(' · ') + '<br>'
+      : '<span class="big">돌연변이로 나타난 형질</span>')
+    + (L.length
+        ? L.map(x=>x.emoji+' <b>'+x.이름+'</b> '+x.마리+'마리 ('+x.사람수+'명이 가짐)').join(' &nbsp;·&nbsp; ')
+        : '아직 남아 있는 개체가 없습니다 — 나타났다가 사라졌습니다.')
+    + '<div style="font-size:12px;color:var(--sub);margin-top:6px">'
+    + '어버이 둘 다 없던 형질입니다. 학생들에게 «이게 퍼질까, 사라질까? 왜?» 를 물어보세요.</div>';
 }
 
 function paintStudents(){

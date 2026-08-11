@@ -144,6 +144,8 @@
 </section>
 </div>
 
+<div id="novelBig"></div>
+
 <!-- 구역 팝업 -->
 <div class="modal" id="modal">
   <div class="box">
@@ -191,6 +193,7 @@ async function poll(){
 /* ── 그리기 ── */
 let 보드사인='';
 function paint(){
+  paintNovelBig();
   $('#tGen').textContent = T.turn;
   $('#tPhase').textContent = T.phaseName || '—';
   $('#tPop').textContent = T.총개체;
@@ -298,6 +301,33 @@ function paintSparks(){
 
 /* ══ 구역 팝업 — 외계인들이 돌아다닌다 ══════════════════════════ */
 let 모달칸 = null, 배우 = [], 애니 = null, 그림장 = {};
+
+/* 없던 형질 — 빔 화면에서 제일 크게 보여야 한다.
+   이 순간을 반 전체가 함께 봐야 «변이가 먼저, 선택은 그 다음» 이 남는다 */
+function paintNovelBig(){
+  const 방금 = (T.result && T.result.새형질) || [], 지금 = T.새형질 || [];
+  const box = $('#novelBig');
+  if(!방금.length && !지금.length){ box.innerHTML=''; return; }
+  box.innerHTML =
+    '<div style="background:linear-gradient(135deg,#2b1b4d,#123a2c);border:2px solid #ffd36b;'
+    + 'border-radius:16px;padding:16px 20px;margin:0 0 14px">'
+    + (방금.length
+        ? '<div style="font-size:30px;font-weight:800;color:#ffd36b;line-height:1.25">'
+          + 방금.map(x=>x.emoji+' '+x.이름).join(' · ') + ' — 없던 형질이 나타났습니다!</div>'
+          + '<div style="font-size:19px;margin-top:6px">'
+          + 방금.map(x=>'<b style="color:#7cf0c8">'+x.누구+'</b> 님의 <b>'+x.칸+'</b> 구역'
+              + (x.마리>1 ? ' · 한배 '+x.마리+'마리' : '')).join(' &nbsp;/&nbsp; ')
+          + '</div>'
+          + '<div style="font-size:16px;color:#9aa6cc;margin-top:6px">'
+          + '어버이 둘 다 이 형질이 없었습니다. 유전자가 베껴지다 틀린 것입니다.</div>'
+        : '<div style="font-size:22px;font-weight:800;color:#ffd36b">돌연변이로 나타난 형질</div>')
+    + (지금.length
+        ? '<div style="font-size:20px;margin-top:8px">'
+          + 지금.map(x=>x.emoji+' <b>'+x.이름+'</b> '+x.마리+'마리 <span style="color:#9aa6cc;font-size:16px">('
+            + x.사람수+'명)</span>').join(' &nbsp;·&nbsp; ') + '</div>'
+        : '<div style="font-size:18px;color:#9aa6cc;margin-top:8px">지금은 남아 있는 개체가 없습니다 — 나타났다가 사라졌습니다.</div>')
+    + '</div>';
+}
 
 function 팝업열기(r,c){
   모달칸 = {r,c};
