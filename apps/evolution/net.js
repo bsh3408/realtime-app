@@ -112,7 +112,13 @@
       return Promise.all([
         this.get('evo_game?id=eq.'+gid+'&select=*'),
         this.get('evo_player_public?game_id=eq.'+gid+'&select=*'),
-        this.get('evo_alien?game_id=eq.'+gid+'&select=*'),
+        /* order=id 가 없으면 순서가 흔들린다.
+           포스트그레스는 행을 고치면 «새 판» 을 힙 끝에 붙이므로, 방금 고친
+           개체가 목록 맨 뒤로 밀려난다. 그러면 화면이 «1번» 이라고 부르던
+           개체가 딴 개체가 되어 버려서, 학생 눈에는 한 자리만 눌렀는데
+           통째로 무작위로 바뀐 것처럼 보인다. 실제로 여섯 번 눌러 여섯 번
+           다 흔들리는 것을 확인했다. */
+        this.get('evo_alien?game_id=eq.'+gid+'&select=*&order=id.asc'),
         /* 아직 답이 없는 신청 + 이번 세대의 «거래» 는 답이 끝난 것까지 가져온다.
            거래 신청 횟수를 셀 때 거절당한 것도 세야 하기 때문이다.
            안 그러면 거절당할 때마다 다시 찔러 볼 수 있다 */

@@ -548,7 +548,9 @@ let S = null;                 // 서버가 준 학생상태
 let tRef = Date.now();        // 마지막으로 서버와 통신한 시각
 let sel = null;               // 고른 내 개체 id
 let selCell = null;           // 고른 칸
-let editIdx = 0, home = null;
+/* 제작 화면에서 고르는 개체는 «몇 번째» 가 아니라 «어느 개체» 로 잡는다.
+   자리로 잡으면 목록 순서가 조금만 흔들려도 딴 개체를 고치게 된다 */
+let editId = null, home = null;
 let pendingMoves = {};        // 아직 서버에 못 보낸 이동
 let saveTimer = null;
 
@@ -728,11 +730,12 @@ function paintSetup(){
   $('#doneMsg').innerHTML = 끝냈나
     ? '<div class="msg g">선생님 화면에 <b>완료</b>로 떴습니다. 다른 친구를 기다려 주세요.</div>'
     : '<div class="msg i">아직 <b>완료</b>를 누르지 않았습니다. 다 만들었으면 눌러 주세요.</div>';
-  if(editIdx>=list.length) editIdx=0;
+  if(editId == null || !list.some(a=>a.i===editId)) editId = list[0].i;
+  const editIdx = list.findIndex(a=>a.i===editId);
   list.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='tile'+(i===editIdx?' on':'');
     d.innerHTML='<img src="'+sprite(phOf(a.g))+'"><div class="lb">'+(i+1)+'번</div>';
-    d.onclick=()=>{ editIdx=i; paintSetup(); };
+    d.onclick=()=>{ editId=a.i; paintSetup(); };
     st.appendChild(d);
   });
   const A=list[editIdx], g=A.g;
