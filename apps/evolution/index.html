@@ -307,7 +307,7 @@ function biome(k){ return BIOME[k] || BIOMES[0]; }
 const 칸환경 = (r,c) => (S && S.board && S.board[r]) ? S.board[r][c] : null;
 const phOf = (g, r, c) => RULES.표현형문자열(g,
   (r==null ? (home ? 칸환경(home.r,home.c) : null) : 칸환경(r,c)));
-const 몸색깔 = g => '#' + RULES.몸빛깔(g).map(v=>('0'+v.toString(16)).slice(-2)).join('');
+const 몸색깔 = g => RULES.빛깔(g).hex;
 const phOfA = a => { const p = (typeof pendingMoves!=='undefined' && pendingMoves[a.i]) || a;
                      return phOf(a.g, p.r, p.c); };
 const genoLabel = (g,i) => RULES.유전자표기(g,i);
@@ -381,27 +381,22 @@ document.addEventListener('click', e => {
 /* 겉모습을 보고 형질을 읽어 내는 게 이 게임이라, 작으면 게임이 안 된다.
    어느 그림이든 눌러서 크게 볼 수 있게 한다. */
 function 크게(ph, 제목, 부제){
-  /* 겉모습 열네 자리를 이름 있는 값으로 풀어 준다.
-     1 = 털 있음 … 이 아니라 색소처럼 «양(0~4)» 인 자리도 있어서
-     자리마다 다르게 읽어야 한다 */
+  /* 겉모습 열두 자리를 이름 있는 값으로 풀어 준다.
+     대부분은 «1 = 있음 / 0 = 없음» 이지만 몸빛깔 자리만 0~8 인 색 번호라
+     그 자리는 따로 읽어야 한다 */
   const P = RULES.PH;
   const 읽기 = (G, i) => {
-    if (G.색) return null;                       // 색 유전자 여섯은 «몸 빛깔» 하나로 묶어 보여 준다
+    if (G.색) return null;                       // 색 유전자 둘은 «몸 빛깔» 한 줄로 묶어 보여 준다
     const k = P[G.k];
     if (k == null) return null;
     return ph.charAt(k) === '1' ? G.d : G.r;
   };
-  const 색이름 = ['없음','조금','보통','많이','아주 많이'];
-  const 몸색 = '#' + RULES.겉빛깔(ph).map(v=>('0'+v.toString(16)).slice(-2)).join('');
-  let 줄 = '<div class="gclick" data-gene="'+GENES.findIndex(x=>x.k==='k1')+'">'
+  const 몸색 = RULES.색표[RULES.겉번호(ph)];
+  let 줄 = '<div class="gclick" data-gene="'+GENES.findIndex(x=>x.k==='c1')+'">'
     + '<span>몸 빛깔 <span style="color:var(--accent2)">ⓘ</span></span>'
     + '<b><i style="display:inline-block;width:14px;height:14px;border-radius:4px;'
-    + 'border:1px solid #0006;background:'+몸색+';vertical-align:-2px;margin-right:5px"></i>'
-    + '검'+ph.charAt(P['검'])+' 노'+ph.charAt(P['노'])+' 푸'+ph.charAt(P['푸'])+'</b></div>'
-    + '<div style="grid-column:1/-1;color:var(--sub);font-size:11px;border:0;padding:0 0 4px">'
-    + '검은 색소 '+색이름[+ph.charAt(P['검'])||0]
-    + ' · 노란 색소 '+색이름[+ph.charAt(P['노'])||0]
-    + ' · 푸른 색소 '+색이름[+ph.charAt(P['푸'])||0] + '</div>';
+    + 'border:1px solid #0006;background:'+몸색.hex+';vertical-align:-2px;margin-right:5px"></i>'
+    + 몸색.n + '</b></div>';
   GENES.forEach((G,i)=>{
     const v = 읽기(G,i);
     if (v == null) return;
@@ -981,7 +976,8 @@ function paintMine(){
     /* 몸빛깔과 이 칸 배경을 나란히 놓는다. 숨긴 값을 알려 주는 게 아니라
        «눈에 보이는 두 색» 을 붙여 놓는 것뿐이다 — 학생이 «어? 비슷하네/
        완전 다르네» 를 스스로 알아채라는 자리다 */
-    +'<div class="swatch"><span>내 몸빛깔</span>'
+    +'<div class="swatch"><span>내 몸빛깔 <b style="color:var(--ink)">'
+      +RULES.빛깔(A.g).n+'</b></span>'
       +'<i style="background:'+몸색깔(A.g)+'"></i>'
       +'<i style="background:'+b.bg+'"></i>'
       +'<span>이 칸 배경</span></div>'
