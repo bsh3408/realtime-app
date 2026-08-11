@@ -309,9 +309,9 @@
 
     '환경지정': function (code, dir) {
       var g = EVO.game, st = 설정읽기(g);
-      var 변화 = R.변화찾기(dir) || R.무작위변화();
+      var 변화 = R.변화찾기(dir) || R.무작위변화({ dt:g.env_dt, dm:g.env_dm }, st);
       var env = R.환경적용({ dt:g.env_dt, dm:g.env_dm }, 변화, st);
-      var 다음 = R.무작위변화();
+      var 다음 = R.무작위변화(env, st);
       return EVO.rpc('evo_set_state', { p_code:code, p_game:EVO.gameId, p_patch:{
         phase:'env', env_dt:env.dt, env_dm:env.dm,
         board:R.보드만들기(env, st.terrain), forecast:다음.설명, end_at:'',
@@ -675,7 +675,7 @@
       }
 
       if (다음 === 'env') {
-        var 변화 = g.forecast ? _변화by설명(g.forecast) : R.무작위변화();
+        var 변화 = g.forecast ? _변화by설명(g.forecast) : R.무작위변화({ dt:g.env_dt, dm:g.env_dm }, st);
         var env = R.환경적용({ dt:g.env_dt, dm:g.env_dm }, 변화, st);
         var terrain = st.terrain || {};
         var board2 = R.보드만들기(env, terrain);
@@ -694,7 +694,7 @@
           ? { k: R.무작위재해().k, r: Math.floor(Math.random()*5), c: Math.floor(Math.random()*5) }
           : null;
 
-        var 예보 = R.무작위변화();
+        var 예보 = R.무작위변화(env, st);   // 다음 세대에 «진짜로 움직일» 방향만 예보한다
         patch.env_dt = env.dt; patch.env_dm = env.dm;
         patch.forecast = 예보.설명;
 

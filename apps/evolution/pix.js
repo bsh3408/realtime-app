@@ -2,9 +2,10 @@
  *  pix.js — 픽셀 외계인 그리기
  *  2026 광주하남영재교육원 · 중학 융합과정 (변석환)
  *
- *  «겉모습» 열두 자리만 있으면 그린다. 자리 뜻은 rules.js 의 PH 와 같다.
+ *  «겉모습» 열일곱 자리만 있으면 그린다. 자리 뜻은 rules.js 의 PH 와 같다.
  *    0 털 · 1 몸빛깔(0~8) · 2 눈 · 3 다리 · 4 키 · 5 물저장 · 6 발톱
- *    7 앞다리(1=팔 0=지느러미) · 8 더듬이 · 9 비늘 · 10 빛깔 · 11 날개
+ *    7 앞다리(1=팔 0=지느러미) · 8 더듬이
+ *    9 비늘 · 10 빛깔 · 11 날개 · 12 아가미 · 13 뿔 · 14 엽록 · 15 굴발 · 16 반향
  *
  *  ══ 색은 아홉 가지다 ═══════════════════════════════════════════
  *  색 유전자 둘(각 0·1·2)의 짝이 아홉 빛깔을 만든다. 그 아홉은
@@ -16,8 +17,12 @@
  *  하나라도 새어 나가면 «숨은 형질» 이라는 규칙이 무너진다.
  *
  *  ══ 새 형질 ════════════════════════════════════════════════════
- *  비늘·빛깔·날개는 돌연변이로만 생긴다. 생기면 한눈에 알아볼 수
- *  있어야 한다 — 그래야 «부모에게 없던 것이 나타났다» 가 보인다.
+ *  여덟 가지가 돌연변이로만 생긴다. 생기면 한눈에 알아볼 수 있어야
+ *  한다 — 그래야 «부모에게 없던 것이 나타났다» 가 보인다. 그래서
+ *  하나하나 «어디에 붙는지» 를 다르게 두었다:
+ *    비늘 몸통 무늬 · 빛깔 어른거리는 띠 · 날개 옆으로 뻗은 막
+ *    아가미 목의 틈 셋 · 뿔 머리 위 · 엽록 몸통의 초록 반점
+ *    굴발 넓적한 삽 앞발 · 반향 커다란 귀와 퍼지는 소리
  * ════════════════════════════════════════════════════════════════ */
 
 (function (전역) {
@@ -49,6 +54,10 @@
 
   var OUT='#12203a', WHITE='#fff', PUP='#101a30';
   var 날개색 = '#bfe6ff';
+  var 엽록색 = '#3fa64a', 엽록밝 = '#7fd66a';   // 피부 속 초록 알갱이
+  var 뿔색   = '#efe3c4', 뿔그늘 = '#b9a882';   // 뼈처럼 누런 흰빛
+  var 아가미색 = '#c0392b';                      // 틈 안쪽의 붉은 살
+  var 소리색 = '#9fd8ff';                        // 반향정위 — 퍼져 나가는 소리
 
   var buf, solid;
   var ix = function (x,y) { return y*W + x; };
@@ -77,10 +86,12 @@
   function buildPix(ph) {
     /* 자리 뜻은 rules.js 의 PH 와 같다 —
        0 털 · 1 색(0~8) · 2 눈 · 3 다리 · 4 키 · 5 물저장 · 6 발톱
-       7 앞다리(1=팔) · 8 더듬이 · 9 비늘 · 10 빛깔 · 11 날개 */
+       7 앞다리(1=팔) · 8 더듬이 · 9 비늘 · 10 빛깔 · 11 날개
+       12 아가미 · 13 뿔 · 14 엽록 · 15 굴발 · 16 반향 */
     var P  = function (i) { return ph.charAt(i) === '1'; };
     var 털=P(0), 눈큰=P(2), 다리많=P(3), 큼=P(4), 물=P(5), 발톱=P(6),
-         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11);
+         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11),
+         아가미=P(12), 뿔=P(13), 엽록=P(14), 굴발=P(15), 반향=P(16);
     var 지느러미 = !팔;
     // 비늘이 나면 털이 자랄 자리를 비늘이 차지한다
     if (비늘) 털 = false;
@@ -117,6 +128,15 @@
       }
     }
 
+    // 반향정위 — 커다란 귀. 몸통보다 먼저 그려 뒤로 보낸다
+    if (반향) {
+      for (var es0=-1; es0<=1; es0+=2) {
+        var ex0 = cx + es0*(bodyRx-8), ey0 = (bodyCy - bodyRy*0.5)|0;
+        fEl(ex0 + es0*9, ey0 - 4, 9, 15, sk.mid, true);
+        fEl(ex0 + es0*10, ey0 - 4, 5, 10, sk.dark, true);
+      }
+    }
+
     /* 지느러미 — 팔과 «같은 유전자» 다. 한눈에 구별되지 않으면
        그 규칙이 학생에게 안 보인다. 그래서 몸 밖으로 확실히 내민다.
        (예전에는 등지느러미를 몸통 안쪽에 그려서 털에 다 가려졌다) */
@@ -143,9 +163,17 @@
     for (var L=0;L<legN;L++) {
       var fx = (cx - spread/2 + spread*L/(legN-1))|0;
       for (var y2=0;y2<9;y2++) for (var x2=-3;x2<=3;x2++) px(fx+x2, bottom-3+y2, sk.mid, true);
-      var fw = 발톱 ? 6 : 3;
-      fEl(fx, bottom+6, fw, 3, sk.dark, true);
-      if (발톱) for (var k=-1;k<=1;k++) px(fx + k*fw, bottom+9, OUT, true);
+      /* 굴 파는 발 — 뾰족한 발톱이 아니라 넓적한 삽이다.
+         발톱과 «같은 자리» 를 쓰므로 둘이 겹치면 굴발이 이긴다 */
+      var fw = 굴발 ? (다리많 ? 7 : 11) : (발톱 ? 6 : 3);
+      fEl(fx, bottom+6, fw, 굴발 ? 5 : 3, 굴발 ? sk.lite : sk.dark, true);
+      if (굴발) {
+        for (var k1=-2;k1<=2;k1++) {              // 삽 끝의 넓적한 발가락
+          var kx = fx + ((k1*fw)/2.6)|0;
+          for (var k2=0;k2<4;k2++) px(kx, bottom+8+k2, k2===3 ? OUT : sk.dark, true);
+        }
+      }
+      else if (발톱) for (var k=-1;k<=1;k++)    px(fx + k*fw, bottom+9, OUT, true);
     }
 
     // 팔 — 마디가 있고 끝에 손이 달린다. 지느러미와 헷갈리면 안 된다
@@ -190,8 +218,42 @@
       }
     }
 
+    // 아가미 — 몸통 양옆 위쪽에 난 틈 셋. 안쪽이 붉게 비친다
+    if (아가미) {
+      for (var gs=-1; gs<=1; gs+=2) for (var gi=0; gi<3; gi++) {
+        var gx = cx + gs*(bodyRx - 6 - gi*7), gy = (bodyCy - bodyRy*0.45)|0;
+        for (var gq=0; gq<13; gq++) {
+          if (Math.sin(gq/12*Math.PI) < 0.2) continue;   // 가운데가 벌어진 틈
+          if (isS(gx, gy+gq))      buf[ix(gx, gy+gq)]      = 아가미색;
+          if (isS(gx-gs, gy+gq))   buf[ix(gx-gs, gy+gq)]   = 아가미색;
+          if (isS(gx+gs, gy+gq))   buf[ix(gx+gs, gy+gq)]   = sk.lite;
+          if (isS(gx-gs*2, gy+gq)) buf[ix(gx-gs*2, gy+gq)] = sk.dark;
+        }
+      }
+    }
+    // 엽록 피부 — 살갗 속에 박힌 초록 알갱이
+    if (엽록) {
+      var 점 = [[-16,-8],[2,-15],[15,-2],[-6,6],[10,13],[-18,11],[0,18],[17,-15],[-11,-18]];
+      for (var pi=0; pi<점.length; pi++) {
+        var qx = cx + 점[pi][0], qy = (bodyCy + 점[pi][1]*(큼?1.3:1))|0;
+        for (var dy=-3;dy<=3;dy++) for (var dx=-4;dx<=4;dx++)
+          if (dx*dx*0.6+dy*dy <= 9 && isS(qx+dx, qy+dy))
+            buf[ix(qx+dx, qy+dy)] = (dy<0) ? 엽록밝 : 엽록색;
+      }
+    }
     // 물저장 조직
     if (물) fEl(cx, (bodyCy + bodyRy*0.42)|0, 16, 13, sk.lite, true);
+
+    // 뿔 — 머리 위로 솟아 바깥으로 휜다. 테두리를 받게 outline 앞에 그린다
+    if (뿔) {
+      for (var hs=-1; hs<=1; hs+=2) {
+        var hx0 = cx + hs*13, hy0 = (bodyCy - bodyRy + 5)|0;
+        for (var t8=0; t8<16; t8++) {
+          var r8 = Math.max(1, Math.round(5 - t8*0.27));
+          fEl((hx0 + hs*t8*0.55)|0, (hy0 - t8*1.05)|0, r8, r8, t8>9 ? 뿔색 : 뿔그늘, true);
+        }
+      }
+    }
     outline();
 
     // 눈
@@ -207,6 +269,18 @@
     // 입
     var my = (ey + eR + 4)|0;
     for (var x3=-3;x3<=3;x3++) px(cx+x3, my + (Math.abs(x3)===3 ? -1 : 0), OUT, false);
+
+    // 반향정위 — 몸 양옆으로 퍼져 나가는 소리
+    if (반향) {
+      for (var ss=-1; ss<=1; ss+=2) {
+        var sx0 = cx + ss*(bodyRx+15), sy0 = (bodyCy - bodyRy*0.45)|0;
+        for (var ai=0; ai<3; ai++) {
+          var rad = 4 + ai*4;
+          for (var th=-0.85; th<=0.85; th+=0.07)
+            px((sx0 + ss*Math.cos(th)*rad)|0, (sy0 + Math.sin(th)*rad*1.4)|0, 소리색, false);
+        }
+      }
+    }
 
     // 더듬이
     var at = (bodyCy - bodyRy)|0, aL = 더듬이 ? 22 : 8;
@@ -275,10 +349,12 @@
   function buildSide(ph, 걸음) {
     /* 자리 뜻은 rules.js 의 PH 와 같다 —
        0 털 · 1 색(0~8) · 2 눈 · 3 다리 · 4 키 · 5 물저장 · 6 발톱
-       7 앞다리(1=팔) · 8 더듬이 · 9 비늘 · 10 빛깔 · 11 날개 */
+       7 앞다리(1=팔) · 8 더듬이 · 9 비늘 · 10 빛깔 · 11 날개
+       12 아가미 · 13 뿔 · 14 엽록 · 15 굴발 · 16 반향 */
     var P  = function (i) { return ph.charAt(i) === '1'; };
     var 털=P(0), 눈큰=P(2), 다리많=P(3), 큼=P(4), 물=P(5), 발톱=P(6),
-         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11);
+         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11),
+         아가미=P(12), 뿔=P(13), 엽록=P(14), 굴발=P(15), 반향=P(16);
     var 지느러미 = !팔;
     if (비늘) 털 = false;
 
@@ -316,9 +392,10 @@
       var lx = (cx - bodyRx*0.55 + bodyRx*1.1*i/(legN-1))|0;
       var 들 = Math.round(Math.max(0, Math.sin(걸음 + i*2.1)) * 5);
       sLine(lx, bodyCy + bodyRy - 2, lx + 들*0.4, 바닥 - 들, 2, sk.mid, true);
-      var fw = 발톱 ? 5 : 3;
-      sEl((lx + 들*0.4)|0, 바닥 - 들, fw, 2, sk.dark, true);
-      if (발톱) spx((lx + 들*0.4 + fw)|0, 바닥 - 들 + 2, OUT, true);
+      var fw = 굴발 ? 8 : (발톱 ? 5 : 3);
+      sEl((lx + 들*0.4)|0, 바닥 - 들, fw, 굴발 ? 3 : 2, 굴발 ? sk.lite : sk.dark, true);
+      if (굴발)      for (var k1=-2;k1<=2;k1++) spx((lx + 들*0.4 + k1*3)|0, 바닥 - 들 + 3, sk.dark, true);
+      else if (발톱) spx((lx + 들*0.4 + fw)|0, 바닥 - 들 + 2, OUT, true);
     }
 
     // 몸통 + 머리
@@ -326,6 +403,24 @@
     var hx = (cx + bodyRx*0.62)|0, hy = (bodyCy - bodyRy*0.28)|0, hr = bodyRy - 3;
     sEl(hx, hy, hr, hr, sk.mid, true);
     sShade(cx, (bodyCy + bodyRy*0.5)|0, (bodyRx*0.9)|0, (bodyRy*0.5)|0, sk.dark);
+
+    // 반향정위 — 머리 위로 솟은 커다란 귀
+    if (반향) {
+      var e0x = (hx - hr*0.3)|0, e0y = (hy - hr*0.8)|0;
+      for (var t9=0;t9<14;t9++) {
+        var w9 = Math.max(1, Math.round(6 - t9*0.34));
+        for (var q9=-w9;q9<=w9;q9++)
+          spx((e0x - t9*0.25 + q9)|0, (e0y - t9)|0, t9>9 ? sk.lite : sk.mid, true);
+      }
+    }
+    // 뿔 — 머리에서 앞위로 뻗는다
+    if (뿔) {
+      var h0x = (hx - hr*0.15)|0, h0y = (hy - hr*0.92)|0;
+      for (var t10=0;t10<18;t10++) {
+        var r10 = Math.max(1, Math.round(5 - t10*0.22));
+        sEl((h0x + t10*0.75)|0, (h0y - t10*0.8)|0, r10, r10, t10>11 ? 뿔색 : 뿔그늘, true);
+      }
+    }
 
     /* 앞다리는 몸통 «위» 에 올린다. 뒤에 그리면 몸통이 통째로 덮어 버려서
        팔인지 지느러미인지 구별이 안 된다 — 한 유전자로 묶은 뜻이 사라진다 */
@@ -375,6 +470,26 @@
         }
       }
     }
+    // 아가미 — 머리 바로 뒤에 난 틈 셋
+    if (아가미) {
+      for (var gi2=0; gi2<3; gi2++) {
+        var gx2 = (cx + bodyRx*0.3 - gi2*5)|0;
+        for (var gq2=-5; gq2<=5; gq2++) {
+          if (sisS(gx2, bodyCy+gq2))   sbuf[six(gx2, bodyCy+gq2)]   = 아가미색;
+          if (sisS(gx2+1, bodyCy+gq2)) sbuf[six(gx2+1, bodyCy+gq2)] = sk.dark;
+        }
+      }
+    }
+    // 엽록 피부
+    if (엽록) {
+      var 점2 = [[-15,-6],[-2,-11],[8,-3],[-8,5],[4,10],[-19,6],[14,-9]];
+      for (var pj=0;pj<점2.length;pj++) {
+        var qx2 = cx+점2[pj][0], qy2 = (bodyCy + 점2[pj][1]*(큼?1.3:1))|0;
+        for (var dy2=-2;dy2<=2;dy2++) for (var dx2=-3;dx2<=3;dx2++)
+          if (dx2*dx2*0.5+dy2*dy2 <= 5 && sisS(qx2+dx2, qy2+dy2))
+            sbuf[six(qx2+dx2, qy2+dy2)] = (dy2<0) ? 엽록밝 : 엽록색;
+      }
+    }
     // 물저장 조직 — 배가 불룩하다
     if (물) sEl((cx-2)|0, (bodyCy + bodyRy*0.45)|0, 13, 8, sk.lite, true);
 
@@ -389,6 +504,16 @@
     spx((ex - eR*0.35)|0, (ey - eR*0.35)|0, WHITE, false);
     // 입
     for (var m=0;m<4;m++) spx(ex + eR - 1 + m, ey + eR + 2, OUT, false);
+
+    // 반향정위 — 머리 앞으로 퍼져 나가는 소리
+    if (반향) {
+      for (var ai2=0; ai2<3; ai2++) {
+        var rad2 = 4 + ai2*4 + Math.round(Math.sin(걸음 - ai2)*1.5);
+        for (var th2=-0.8; th2<=0.8; th2+=0.08)
+          spx((hx + hr*0.9 + Math.cos(th2)*rad2)|0,
+              (hy + hr*0.2 + Math.sin(th2)*rad2*1.2)|0, 소리색, false);
+      }
+    }
 
     /* 더듬이 — 머리 위. 1픽셀 선으로 그렸더니 «긁힌 자국» 처럼 보였다.
        걸을 때 살짝 흔들리게 하되, 굵기를 주어 더듬이로 읽히게 한다 */
