@@ -25,21 +25,31 @@
 
   var W = 120, H = 128;
 
-  /* 밝기 0(아주 검음) → 6(아주 밝음). 일곱 단계 */
-  var 살결 = [
-    { dark:'#0e1c15', mid:'#1f3a2c', lite:'#2e5340' },
-    { dark:'#1b3f2b', mid:'#2f6a49', lite:'#46916a' },
-    { dark:'#2d5e3c', mid:'#4b9a63', lite:'#6fbd86' },
-    { dark:'#4e6d3a', mid:'#7fae5e', lite:'#a3ca86' },
-    { dark:'#6e7449', mid:'#b0b878', lite:'#cdd39c' },
-    { dark:'#8b7e5d', mid:'#d9c898', lite:'#f0e3bd' },
-    { dark:'#a99b78', mid:'#f2e7c8', lite:'#fffaea' }
-  ];
+  /* ── 몸 빛깔 ────────────────────────────────────────────────────
+     색소 셋(검·노·푸)의 «양» 으로 실제 색을 만든다. 섞는 규칙은
+     rules.js 한 곳에만 둔다 — 여기서 또 계산하면 두 그림의 색이 어긋난다.
+     125가지가 나오므로 단계표를 미리 적어 둘 수가 없다. */
+  function _rgb(c, k) {
+    var f = function (v) { v = Math.round(v*k); return Math.max(0, Math.min(255, v)); };
+    return '#' + [f(c[0]), f(c[1]), f(c[2])]
+      .map(function (v) { return ('0'+v.toString(16)).slice(-2); }).join('');
+  }
+  function 살빛(ph) {
+    var rgb = (전역.RULES && 전역.RULES.겉빛깔)
+      ? 전역.RULES.겉빛깔(ph) : [150,175,125];
+    return { mid:  _rgb(rgb, 1),
+             lite: _rgb(rgb, 1.32),      // 배·물주머니처럼 빛 받는 곳
+             dark: _rgb(rgb, 0.62),      // 그늘진 아래쪽
+             /* 털도 «제 몸 색» 이다. 늘 흰 털로 그리면 아무리 색소를 맞춰도
+                몸의 절반이 하얘서 위장이 되지 않는다 — 배경에 맞추면 산다는
+                규칙이 털 있는 개체에게만 헛말이 된다 */
+             fur:  _rgb(rgb, 1.18) };
+  }
   /* 빛깔 — 색소가 아니라 빛이 튕겨 나오는 색이라 어느 부모와도 안 닮았다 */
-  var 빛 = { dark:'#5227b8', mid:'#7b5cff', lite:'#57e6ff' };
+  var 빛 = { dark:'#5227b8', mid:'#7b5cff', lite:'#57e6ff', fur:'#a98cff' };
 
-  var OUT='#12203a', FUR='#fbfff2', WHITE='#fff', PUP='#101a30';
-  var 비늘색 = '#cfe3d6', 날개색 = '#bfe6ff';
+  var OUT='#12203a', WHITE='#fff', PUP='#101a30';
+  var 날개색 = '#bfe6ff';
 
   var buf, solid;
   var ix = function (x,y) { return y*W + x; };
@@ -66,25 +76,25 @@
   }
 
   function buildPix(ph) {
+    /* 자리 뜻은 rules.js 의 PH 와 같다 —
+       0 털 · 1 검 · 2 노 · 3 푸 · 4 눈 · 5 다리 · 6 키 · 7 물저장 · 8 발톱
+       9 앞다리(1=팔) · 10 더듬이 · 11 비늘 · 12 빛깔 · 13 날개 */
     var P  = function (i) { return ph.charAt(i) === '1'; };
-    var 밝 = parseInt(ph.charAt(1), 10); if (isNaN(밝)) 밝 = 3;
-    밝 = Math.max(0, Math.min(살결.length-1, 밝));
-
-    var 털=P(0), 눈큰=P(2), 다리많=P(3), 큼=P(4), 물=P(5), 발톱=P(6),
-         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11);
+    var 털=P(0), 눈큰=P(4), 다리많=P(5), 큼=P(6), 물=P(7), 발톱=P(8),
+         팔=P(9), 더듬이=P(10), 비늘=P(11), 빛깔=P(12), 날개=P(13);
     var 지느러미 = !팔;
     // 비늘이 나면 털이 자랄 자리를 비늘이 차지한다
     if (비늘) 털 = false;
 
     rst();
-    var sk = 빛깔 ? 빛 : 살결[밝];
+    var sk = 빛깔 ? 빛 : 살빛(ph);
     var cx = 60, bottom = 112;
     var bodyRy = 큼 ? 36 : 25, bodyRx = 30, bodyCy = bottom - bodyRy;
 
     // 털
     if (털) { var N=22;
       for (var i=0;i<N;i++) { var a = -Math.PI/2 + i/(N-1)*Math.PI*2*0.92;
-        fEl((cx+Math.cos(a)*(bodyRx-1))|0, (bodyCy+Math.sin(a)*(bodyRy-1))|0, 7,7, FUR, true); } }
+        fEl((cx+Math.cos(a)*(bodyRx-1))|0, (bodyCy+Math.sin(a)*(bodyRy-1))|0, 7,7, sk.fur, true); } }
 
     // 날개 — 몸통 양옆으로 뻗은 얇은 막. 뒤쪽에 그려 몸통이 위로 온다
     if (날개) {
@@ -166,7 +176,7 @@
           for (var d0=-3;d0<=3;d0++) {
             var h0 = 3 - Math.abs(d0);
             for (var e0=0;e0<=h0;e0++)
-              if (isS(sx+d0, sy+e0)) buf[ix(sx+d0, sy+e0)] = (e0===h0) ? 비늘색 : sk.lite;
+              if (isS(sx+d0, sy+e0)) buf[ix(sx+d0, sy+e0)] = (e0===h0) ? sk.dark : sk.lite;
           }
         }
       }
@@ -264,17 +274,17 @@
   }
 
   function buildSide(ph, 걸음) {
+    /* 자리 뜻은 rules.js 의 PH 와 같다 —
+       0 털 · 1 검 · 2 노 · 3 푸 · 4 눈 · 5 다리 · 6 키 · 7 물저장 · 8 발톱
+       9 앞다리(1=팔) · 10 더듬이 · 11 비늘 · 12 빛깔 · 13 날개 */
     var P  = function (i) { return ph.charAt(i) === '1'; };
-    var 밝 = parseInt(ph.charAt(1), 10); if (isNaN(밝)) 밝 = 3;
-    밝 = Math.max(0, Math.min(살결.length-1, 밝));
-
-    var 털=P(0), 눈큰=P(2), 다리많=P(3), 큼=P(4), 물=P(5), 발톱=P(6),
-         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11);
+    var 털=P(0), 눈큰=P(4), 다리많=P(5), 큼=P(6), 물=P(7), 발톱=P(8),
+         팔=P(9), 더듬이=P(10), 비늘=P(11), 빛깔=P(12), 날개=P(13);
     var 지느러미 = !팔;
     if (비늘) 털 = false;
 
     srst();
-    var sk = 빛깔 ? 빛 : 살결[밝];
+    var sk = 빛깔 ? 빛 : 살빛(ph);
     var 바닥 = 74, cx = 50;
     var bodyRy = 큼 ? 24 : 17, bodyRx = 27;
     var 흔들 = Math.round(Math.sin(걸음*2) * 1.4);
@@ -340,7 +350,7 @@
     if (털) {
       for (var f=0;f<15;f++) {
         var a2 = -Math.PI*0.98 + f/14 * Math.PI*1.05;
-        sEl((cx + Math.cos(a2)*(bodyRx-2))|0, (bodyCy + Math.sin(a2)*(bodyRy-1))|0, 5,5, FUR, true);
+        sEl((cx + Math.cos(a2)*(bodyRx-2))|0, (bodyCy + Math.sin(a2)*(bodyRy-1))|0, 5,5, sk.fur, true);
       }
     }
     // 비늘
@@ -352,7 +362,7 @@
           for (var d0=-2;d0<=2;d0++) {
             var h0 = 2 - Math.abs(d0);
             for (var e0=0;e0<=h0;e0++)
-              if (sisS(sx2+d0, sy2+e0)) sbuf[six(sx2+d0, sy2+e0)] = (e0===h0) ? 비늘색 : sk.lite;
+              if (sisS(sx2+d0, sy2+e0)) sbuf[six(sx2+d0, sy2+e0)] = (e0===h0) ? sk.dark : sk.lite;
           }
         }
       }
@@ -417,7 +427,7 @@
   /* 걷기 네 장을 한꺼번에 */
   function 걷기(ph) { return [side(ph,0), side(ph,1), side(ph,2), side(ph,3)]; }
 
-  전역.PIX = { sprite: sprite, W: W, H: H, buildPix: buildPix, 살결: 살결,
+  전역.PIX = { sprite: sprite, W: W, H: H, buildPix: buildPix, 살빛: 살빛,
                side: side, 걷기: 걷기, SW: SW, SH: SH };
   전역.sprite = sprite;      // 화면 코드가 예전처럼 sprite() 로 부른다
 })(window);
