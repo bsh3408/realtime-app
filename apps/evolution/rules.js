@@ -290,7 +290,14 @@
       말:'땅이 가라앉아 바다가 되었습니다' },
     { k:'rise',    n:'대지 융기', emoji:'⛰️', 범위:3, 기본생존:0.35,
       살아남는:{ leg:1, grip:1, limb:1 }, w:{ grip:2 }, 지형:'rise',
-      말:'바다가 솟아올라 마른 땅이 되었습니다' }
+      말:'바다가 솟아올라 마른 땅이 되었습니다' },
+    /* 외계인 사냥꾼 — 다른 재해와 규칙이 아예 다르다.
+       형질은 하나도 소용이 없고 «배경에 묻히는가» 만 본다.
+       그동안 색을 맞춰 온 개체가 한 번에 보답을 받는 자리다.
+       선생님이 직접 부르는 사건이라 «오늘은 색이다» 를 만들 수 있다 */
+    { k:'hunter',  n:'외계인 사냥꾼', emoji:'🛸', 범위:6, 기본생존:0.05,
+      살아남는:{}, w:{}, 지형:null, 색사냥:true, 교사전용:true,
+      말:'하늘에서 배가 내려왔습니다 — 눈에 띄는 것부터 잡아갑니다' }
   ];
 
   var PHASES = ['setup', 'survive', 'move', 'breed', 'next', 'env'];
@@ -302,8 +309,15 @@
   function 기본설정() {
     return {
       /* 생존 확률 = base + 적응도/100 × span
-         적응도 0 → 20% · 50 → 50% · 100 → 80% */
-      base:0.20, span:0.60,
+         자손이 «태어나자마자» 한 번 걸러지게 되면서(birth*) 여기는
+         너그럽게 바꿨다 — 총 죽는 수는 비슷한데, 죽는 자리가
+         «세대가 바뀐 다음» 이 아니라 «태어난 그 순간» 으로 옮겨 왔다.
+         그래야 학생이 «내 자손이 왜 죽었나» 를 그 자리에서 본다.
+         적응도 0 → 34% · 50 → 64% · 100 → 94% */
+      base:0.34, span:0.60,
+
+      /* 태어나자마자 받는 판정 — 적응도 0 → 42% · 50 → 73% · 100 → 98% */
+      birthBase:0.42, birthSpan:0.62,
 
       /* 수명 — 오래 사는 대신 생존 판정에서 손해를 본다.
          한 세대를 더 살면 교배를 두 번 하므로 이득이 아주 크다.
@@ -313,6 +327,11 @@
          0.20 → 수명 53·개체  87   ·   0.26 → 수명 52·개체  47(너무 얇다)
          0.17 이 «수명이 정답이 되지도, 사라지지도 않으면서» 개체군이 튼튼했다 */
       lifeCost:0.17, lifeExtra:1,
+      /* 오래 사는 값을 두 가지 더 물린다 — 대가가 «생존 확률 한 줄» 뿐이면
+         한 세대를 더 사는 이득(교배 두 번)이 언제나 이겨서 수명이 정답이 된다.
+           agingCost — 두 번째 세대는 몸이 예전 같지 않다 (노화)
+           lifeFec   — 오래 사는 몸은 한 번에 적게 낳는다 (수명·번식 맞바꿈) */
+      agingCost:0.28, lifeFec:0.25,
 
       /* 번식력 — 자손은 2마리 아니면 4마리.
          4마리가 나올 확률이 유전자형에 따라 다르다 (우열이 아니라 «쌓인다»)
@@ -537,11 +556,24 @@
     return Math.round(100 / (1 + Math.exp(-(s - 50) / 25)));
   }
 
-  function 생존확률(geno, biomeKey, st, 넘침) {
+  function 생존확률(geno, biomeKey, st, 넘침, 나이) {
     var p = st.base + (적응도(geno,biomeKey)/100) * st.span;
     if (표현형(geno,'life')===1) p -= st.lifeCost;
+    /* 노화 — 두 번째 세대를 사는 개체는 몸이 예전 같지 않다.
+       수명이 길면 한 세대를 더 살지만, 그 한 세대는 더 위태롭다 */
+    if ((나이||0) > 0) p -= st.agingCost || 0;
     p -= (넘침||0) * st.crowd;
     return Math.max(0.03, Math.min(0.95, p));
+  }
+
+  /* ── ③ 태어나자마자 받는 판정 ────────────────────────────────
+     지금 이 자리의 환경을 못 견디는 자손은 자라지 못한다.
+     실제로도 죽음은 어릴 때 몰려 있다(유형 III 생존곡선).
+     대신 그 뒤의 생존 판정은 더 너그럽게 했다 — 죽는 총량은 비슷하되
+     «어디서 왜 죽었는지» 가 학생에게 보이는 쪽으로 옮긴 것이다 */
+  function 출생생존확률(geno, biomeKey, st) {
+    return Math.max(0.05, Math.min(0.98,
+      st.birthBase + (적응도(geno,biomeKey)/100) * st.birthSpan));
   }
 
   /* ── 멘델 ── */
@@ -598,7 +630,12 @@
      그래서 잡종(Rr)도 순종열성(rr)보다 낫다 — 우열의 법칙과 다른 유전 방식이다 */
   function 넷확률(geno, st) {
     var v = +geno.charAt(자리('fec'));
-    return v===2 ? st.fec2 : v===1 ? st.fec1 : st.fec0;
+    var p = v===2 ? st.fec2 : v===1 ? st.fec1 : st.fec0;
+    /* 오래 사는 몸은 자손에 쓸 힘을 제 몸 고치는 데 쓴다 — 수명·번식 맞바꿈.
+       실제로도 오래 사는 종일수록 한 번에 적게 낳는다.
+       이게 없으면 «오래 살고 많이 낳는» 개체가 다 이겨서 수명이 정답이 된다 */
+    if (표현형(geno,'life') === 1) p -= st.lifeFec || 0;
+    return Math.max(0, p);
   }
   function 자손수(geno, st) {
     return Math.random() < 넷확률(geno, st) ? st.kid4 : st.kid2;
@@ -649,6 +686,18 @@
      있어서, 어디서 재해를 맞았는지에 따라 답이 달라진다 */
   function 재해생존확률(geno, ev, biomeKey) {
     var p = ev.기본생존;
+
+    /* 사냥꾼 — 오직 «얼마나 눈에 안 띄는가» 다.
+         배경과 똑같은 색 → 93%   ·   보통(217) → 44%   ·   완전히 다른 색 → 5%
+       번쩍이는 빛깔은 등불이 되고, 굴을 파면 들어가 숨는다.
+       그 밖의 형질은 아무 쓸모가 없다 — 튼튼해도 눈에 띄면 잡혀간다 */
+    if (ev.색사냥) {
+      p = 0.05 + (1 - Math.min(1, 색차(geno, biomeKey) / 380)) * 0.88;
+      if (표현형(geno,'glow', biomeKey)) p -= 0.35;
+      if (표현형(geno,'dig',  biomeKey)) p += 0.22;
+      return Math.max(0.02, Math.min(0.96, p));
+    }
+
     for (var k in ev.살아남는) {
       var w = (ev.w && ev.w[k]) || 1;
       if (표현형(geno,k,biomeKey) === ev.살아남는[k]) p += 0.11 * w;
@@ -664,7 +713,12 @@
     return Math.max(0.02, Math.min(0.96, p));
   }
 
-  function 무작위재해() { return EVENTS[Math.floor(Math.random()*EVENTS.length)]; }
+  /* 저절로 일어나는 재해에서는 «교사전용» 을 뺀다.
+     사냥꾼은 위장을 이야기할 때 선생님이 직접 부르는 자리다 */
+  function 무작위재해() {
+    var 풀 = EVENTS.filter(function (e) { return !e.교사전용; });
+    return 풀[Math.floor(Math.random()*풀.length)];
+  }
   function 재해찾기(k) {
     for (var i=0;i<EVENTS.length;i++) if (EVENTS[i].k===k) return EVENTS[i];
     return null;
@@ -742,7 +796,7 @@
       var a=aliens[i];
       if (!a.alive) continue;
       var 넘침 = Math.max(0, (몰림[a.r+','+a.c]||0) - st.cellCap);
-      if (Math.random() < 생존확률(a.geno, board[a.r][a.c], st, 넘침)) 산것++;
+      if (Math.random() < 생존확률(a.geno, board[a.r][a.c], st, 넘침, a.age)) 산것++;
       else 죽음.push(a.id);
     }
     return { 단계:'생존 판정', 죽을것:죽음, 살아남음:산것, 죽음:죽음.length,
@@ -776,7 +830,7 @@
     return { 짝:짝, 성사:짝.length, 실패:실패 };
   }
 
-  function 세대교체(aliens, 짝목록, players, turn, st) {
+  function 세대교체(aliens, 짝목록, players, turn, st, board) {
     var 새것=[], 자손=0, 사망=0, 장수=0, 구제=0, 넷쌍=0;
     var 새소식=[];   // 이번 세대에 «없던 형질» 이 생긴 기록
     var 사람별={}, i;
@@ -806,6 +860,26 @@
       }
     }
 
+    /* ── 태어나자마자 받는 적응 판정 ──────────────────────────
+       갓 태어난 것(age 0)만 받는다. 살아남은 어른은 이미 생존 판정을
+       한 번 통과했으므로 또 물으면 두 번 죽이는 셈이다.
+       사람마다 «몇 마리 태어나 몇 마리가 못 버텼는지» 를 세어 둔다 —
+       학생 화면에 그대로 알려 준다 */
+    var 출생별 = {};
+    if (board) for (var pid0 in 사람별) {
+      var L0 = 사람별[pid0].list, 남음 = [], 태어남 = 0, 못버팀 = 0, z, x0, bk;
+      for (z=0; z<L0.length; z++) {
+        x0 = L0[z];
+        if ((x0.age||0) !== 0) { 남음.push(x0); continue; }
+        태어남++;
+        bk = board[x0.r] && board[x0.r][x0.c];
+        if (!bk || Math.random() < 출생생존확률(x0.geno, bk, st)) 남음.push(x0);
+        else 못버팀++;
+      }
+      사람별[pid0].list = 남음;
+      if (태어남) 출생별[pid0] = { 태어남:태어남, 죽음:못버팀 };
+    }
+
     for (var pid in 사람별) {
       var 통2=사람별[pid], L=통2.list;
       if (L.length > st.cap) {
@@ -822,9 +896,11 @@
       }
       새것 = 새것.concat(L);
     }
+    var 출생죽음 = 0;
+    for (var pk in 출생별) 출생죽음 += 출생별[pk].죽음;
     return { 단계:'세대 교체', 개체:새것, 세대:turn+1,
              자손:자손, 사망:사망, 장수생존:장수, 구제:구제, 네마리:넷쌍,
-             새형질:새소식 };
+             새형질:새소식, 출생별:출생별, 출생죽음:출생죽음 };
   }
 
   function _낳기(사람별, pid, 나, 짝, n, turn, st, 새소식) {
@@ -897,6 +973,7 @@
     변화목록:변화목록, 변화찾기:변화찾기, 무작위변화:무작위변화, 환경적용:환경적용,
     무작위재해:무작위재해, 재해찾기:재해찾기, 재해발생:재해발생, 재해생존확률:재해생존확률,
     생존판정:생존판정, 자동교배:자동교배, 세대교체:세대교체, 빈도:빈도, 구역빈도:구역빈도,
+    출생생존확률:출생생존확률,
     경보볼수있나:경보볼수있나
   };
 })(window);

@@ -335,7 +335,7 @@
               settings:st2,
               board:R.보드만들기({ dt:g.env_dt, dm:g.env_dm }, 재해.terrain),
               result:{ 단계:'환경 변화', 설명:'선생님이 일으킨 재해',
-                       재해:{ 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
+                       재해:{ k:재해.사건, 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
                               칸들:재해.칸들, 살아남음:재해.살아남음, 죽음:재해.죽음 } }
             }});
           })
@@ -646,7 +646,7 @@
           var 자동 = R.자동교배(aliens, 짝지은, st);
           짝목록 = 짝목록.concat(자동.짝);
 
-          var rep = R.세대교체(aliens, 짝목록, 판.players, g.turn, st);
+          var rep = R.세대교체(aliens, 짝목록, 판.players, g.turn, st, 보드읽기(g));
           var 보낼것 = rep.개체.map(function (x) {
             return { player:x.player, geno:x.geno, r:x.r, c:x.c,
                      alive:true, born:x.born, age:x.age };
@@ -667,7 +667,7 @@
               });
               patch.result = { 단계:'세대 교체', 세대:rep.세대, 자손:rep.자손,
                                사망:rep.사망, 장수생존:rep.장수생존, 구제:rep.구제,
-                               새형질:새소식,
+                               새형질:새소식, 출생:rep.출생별, 출생죽음:rep.출생죽음,
                                자동교배:{ 성사:자동.성사, 실패:자동.실패 } };
               return 밀기(code, patch);
             });
@@ -708,7 +708,7 @@
           patch.settings = st2;
           patch.board = board2;
           patch.result = { 단계:'환경 변화', 설명:변화.설명, env:env, 예보:예보.설명,
-                           재해:{ 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
+                           재해:{ k:재해.사건, 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
                                   칸들:재해.칸들, 살아남음:재해.살아남음, 죽음:재해.죽음 } };
           return EVO.rpc('evo_mark_dead',
               { p_code:code, p_game:EVO.gameId, p_ids:재해.죽을것 })

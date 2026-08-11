@@ -12,6 +12,13 @@
  *  아홉 구역의 배경색 그 자체라, 어느 구역이든 «딱 맞는 색» 이
  *  있다. 우열이 없어서 잡종(Cc)도 제 값 그대로 드러난다.
  *
+ *  ══ 차이는 «과장해서» 그린다 ═══════════════════════════════════
+ *  실제 생물의 차이만큼 그리면 화면에서는 아무것도 안 보인다. 큰 눈과
+ *  작은 눈, 긴 더듬이와 짧은 더듬이가 «한눈에» 달라야 학생이 겉모습으로
+ *  유전자형을 읽어 낼 수 있다. 그래서 두 값의 차이를 실제보다 훨씬 크게
+ *  벌려 놓았고, 크기뿐 아니라 «생김새» 도 바꿨다 (다리 여섯은 가늘고
+ *  넓게, 둘은 굵고 좁게 — 하는 식으로).
+ *
  *  ══ 숨은 형질은 절대 그리지 않는다 ═══════════════════════════════
  *  수명·번식력·내열·내독은 그림에 어떤 흔적도 남기면 안 된다.
  *  하나라도 새어 나가면 «숨은 형질» 이라는 규칙이 무너진다.
@@ -99,12 +106,15 @@
     rst();
     var sk = 빛깔 ? 빛 : 살빛(ph);
     var cx = 60, bottom = 112;
-    var bodyRy = 큼 ? 36 : 25, bodyRx = 30, bodyCy = bottom - bodyRy;
+    var bodyRy = 큼 ? 40 : 20, bodyRx = 큼 ? 34 : 24, bodyCy = bottom - bodyRy;
 
     // 털
-    if (털) { var N=22;
-      for (var i=0;i<N;i++) { var a = -Math.PI/2 + i/(N-1)*Math.PI*2*0.92;
-        fEl((cx+Math.cos(a)*(bodyRx-1))|0, (bodyCy+Math.sin(a)*(bodyRy-1))|0, 7,7, sk.fur, true); } }
+    if (털) { var N=30, i, a;
+      for (i=0;i<N;i++) { a = -Math.PI/2 + i/(N-1)*Math.PI*2*0.94;
+        fEl((cx+Math.cos(a)*(bodyRx+1))|0, (bodyCy+Math.sin(a)*(bodyRy+1))|0, 9,9, sk.fur, true); }
+      // 안쪽에 한 겹 더 — 얇은 털과 확실히 달라 보이게 두툼하게
+      for (i=0;i<N;i++) { a = -Math.PI/2 + i/(N-1)*Math.PI*2*0.94;
+        fEl((cx+Math.cos(a)*(bodyRx-7))|0, (bodyCy+Math.sin(a)*(bodyRy-7))|0, 7,7, sk.fur, true); } }
 
     // 날개 — 몸통 양옆으로 뻗은 얇은 막. 뒤쪽에 그려 몸통이 위로 온다
     if (날개) {
@@ -159,13 +169,16 @@
     }
 
     // 다리 + 발톱
-    var legN = 다리많 ? 6 : 2, spread = bodyRx*1.5;
+    /* 다리 — 수만 다른 게 아니라 생김새가 다르다.
+       여섯이면 가늘고 촘촘하게 넓게 벌리고, 둘이면 굵고 좁게 */
+    var legN = 다리많 ? 6 : 2, spread = bodyRx*(다리많 ? 1.9 : 0.7);
+    var legW = 다리많 ? 2 : 6;
     for (var L=0;L<legN;L++) {
       var fx = (cx - spread/2 + spread*L/(legN-1))|0;
-      for (var y2=0;y2<9;y2++) for (var x2=-3;x2<=3;x2++) px(fx+x2, bottom-3+y2, sk.mid, true);
+      for (var y2=0;y2<9;y2++) for (var x2=-legW;x2<=legW;x2++) px(fx+x2, bottom-3+y2, sk.mid, true);
       /* 굴 파는 발 — 뾰족한 발톱이 아니라 넓적한 삽이다.
          발톱과 «같은 자리» 를 쓰므로 둘이 겹치면 굴발이 이긴다 */
-      var fw = 굴발 ? (다리많 ? 7 : 11) : (발톱 ? 6 : 3);
+      var fw = 굴발 ? (다리많 ? 7 : 12) : (발톱 ? (다리많 ? 6 : 10) : legW-1);
       fEl(fx, bottom+6, fw, 굴발 ? 5 : 3, 굴발 ? sk.lite : sk.dark, true);
       if (굴발) {
         for (var k1=-2;k1<=2;k1++) {              // 삽 끝의 넓적한 발가락
@@ -173,7 +186,9 @@
           for (var k2=0;k2<4;k2++) px(kx, bottom+8+k2, k2===3 ? OUT : sk.dark, true);
         }
       }
-      else if (발톱) for (var k=-1;k<=1;k++)    px(fx + k*fw, bottom+9, OUT, true);
+      // 발톱 — 점 하나가 아니라 «갈고리» 로 뻗는다
+      else if (발톱) for (var k=-1;k<=1;k++)
+        for (var kd=0;kd<5;kd++) px((fx + k*fw + k*kd*0.5)|0, bottom+8+kd, kd>2?OUT:sk.dark, true);
     }
 
     // 팔 — 마디가 있고 끝에 손이 달린다. 지느러미와 헷갈리면 안 된다
@@ -242,7 +257,15 @@
       }
     }
     // 물저장 조직
-    if (물) fEl(cx, (bodyCy + bodyRy*0.42)|0, 16, 13, sk.lite, true);
+    if (물) {
+      var wcy = (bodyCy + bodyRy*0.38)|0, wrx = (bodyRx*0.82)|0, wry = (bodyRy*0.66)|0;
+      fEl(cx, wcy, wrx, wry, sk.lite, true);
+      // 주머니 테두리 — 배가 그냥 밝은 게 아니라 «물주머니» 로 읽히게
+      for (var wa=0; wa<80; wa++) {
+        var wt = wa/80*Math.PI*2;
+        px((cx + Math.cos(wt)*wrx)|0, (wcy + Math.sin(wt)*wry)|0, sk.dark, true);
+      }
+    }
 
     // 뿔 — 머리 위로 솟아 바깥으로 휜다. 테두리를 받게 outline 앞에 그린다
     if (뿔) {
@@ -257,7 +280,7 @@
     outline();
 
     // 눈
-    var eR = 눈큰 ? 10 : 5, ey = (bodyCy - bodyRy*0.08)|0;
+    var eR = 눈큰 ? 14 : 4, ey = (bodyCy - bodyRy*0.08)|0;
     var es = Math.min(2*eR*2.1, bodyRx*1.6);
     for (var e=0;e<2;e++) {
       var ex = (cx - es/2 + es*e)|0;
@@ -283,11 +306,14 @@
     }
 
     // 더듬이
-    var at = (bodyCy - bodyRy)|0, aL = 더듬이 ? 22 : 8;
+    var at = (bodyCy - bodyRy)|0, aL = 더듬이 ? 26 : 4;
     for (var d=-1;d<=1;d+=2) {
       var bx2 = cx + d*10;
-      for (var t3=0;t3<aL;t3++) px((bx2 + d*t3*0.4)|0, at - t3, OUT, false);
-      fEl((bx2 + d*(aL*0.4))|0, at - aL - 2, 3, 3, sk.mid, false);
+      // 긴 더듬이는 굵기도 준다 — 길이만으로는 줄여 놓으면 안 보였다
+      for (var t3=0;t3<aL;t3++)
+        for (var tw=0; tw<(더듬이?2:1); tw++)
+          px((bx2 + d*t3*0.42 + tw)|0, at - t3, OUT, false);
+      fEl((bx2 + d*(aL*0.42))|0, at - aL - 2, 더듬이?5:2, 더듬이?5:2, sk.mid, false);
     }
   }
 
@@ -361,7 +387,7 @@
     srst();
     var sk = 빛깔 ? 빛 : 살빛(ph);
     var 바닥 = 74, cx = 50;
-    var bodyRy = 큼 ? 24 : 17, bodyRx = 27;
+    var bodyRy = 큼 ? 26 : 13, bodyRx = 큼 ? 30 : 22;
     var 흔들 = Math.round(Math.sin(걸음*2) * 1.4);
     var bodyCy = 바닥 - bodyRy - 8 + 흔들;
 
@@ -387,20 +413,20 @@
     }
 
     // 다리 — 앞모습 여섯이면 옆에서 셋, 둘이면 둘
-    var legN = 다리많 ? 3 : 2;
+    var legN = 다리많 ? 3 : 2, legW = 다리많 ? 1 : 3;
     for (var i=0;i<legN;i++) {
-      var lx = (cx - bodyRx*0.55 + bodyRx*1.1*i/(legN-1))|0;
+      var lx = (cx - bodyRx*(다리많?0.7:0.35) + bodyRx*(다리많?1.4:0.7)*i/(legN-1))|0;
       var 들 = Math.round(Math.max(0, Math.sin(걸음 + i*2.1)) * 5);
-      sLine(lx, bodyCy + bodyRy - 2, lx + 들*0.4, 바닥 - 들, 2, sk.mid, true);
-      var fw = 굴발 ? 8 : (발톱 ? 5 : 3);
+      sLine(lx, bodyCy + bodyRy - 2, lx + 들*0.4, 바닥 - 들, legW, sk.mid, true);
+      var fw = 굴발 ? 8 : (발톱 ? 7 : legW);
       sEl((lx + 들*0.4)|0, 바닥 - 들, fw, 굴발 ? 3 : 2, 굴발 ? sk.lite : sk.dark, true);
       if (굴발)      for (var k1=-2;k1<=2;k1++) spx((lx + 들*0.4 + k1*3)|0, 바닥 - 들 + 3, sk.dark, true);
-      else if (발톱) spx((lx + 들*0.4 + fw)|0, 바닥 - 들 + 2, OUT, true);
+      else if (발톱) for (var k3=0;k3<4;k3++) spx((lx + 들*0.4 + fw + k3*0.6)|0, 바닥 - 들 + 1 + k3, k3>1?OUT:sk.dark, true);
     }
 
     // 몸통 + 머리
     sEl(cx, bodyCy, bodyRx, bodyRy, sk.mid, true);
-    var hx = (cx + bodyRx*0.62)|0, hy = (bodyCy - bodyRy*0.28)|0, hr = bodyRy - 3;
+    var hx = (cx + bodyRx*0.62)|0, hy = (bodyCy - bodyRy*0.28)|0, hr = Math.min(19, bodyRy + 1);
     sEl(hx, hy, hr, hr, sk.mid, true);
     sShade(cx, (bodyCy + bodyRy*0.5)|0, (bodyRx*0.9)|0, (bodyRy*0.5)|0, sk.dark);
 
@@ -442,9 +468,10 @@
 
     // 털
     if (털) {
-      for (var f=0;f<15;f++) {
-        var a2 = -Math.PI*0.98 + f/14 * Math.PI*1.05;
-        sEl((cx + Math.cos(a2)*(bodyRx-2))|0, (bodyCy + Math.sin(a2)*(bodyRy-1))|0, 5,5, sk.fur, true);
+      for (var f=0;f<20;f++) {
+        var a2 = -Math.PI*1.0 + f/19 * Math.PI*1.1;
+        sEl((cx + Math.cos(a2)*(bodyRx+1))|0, (bodyCy + Math.sin(a2)*(bodyRy+1))|0, 7,7, sk.fur, true);
+        sEl((cx + Math.cos(a2)*(bodyRx-6))|0, (bodyCy + Math.sin(a2)*(bodyRy-5))|0, 5,5, sk.fur, true);
       }
     }
     // 비늘
@@ -491,12 +518,19 @@
       }
     }
     // 물저장 조직 — 배가 불룩하다
-    if (물) sEl((cx-2)|0, (bodyCy + bodyRy*0.45)|0, 13, 8, sk.lite, true);
+    if (물) {
+      var wcy2 = (bodyCy + bodyRy*0.42)|0, wrx2 = (bodyRx*0.72)|0, wry2 = (bodyRy*0.75)|0;
+      sEl((cx-2)|0, wcy2, wrx2, wry2, sk.lite, true);
+      for (var wa2=0; wa2<64; wa2++) {
+        var wt2 = wa2/64*Math.PI*2;
+        spx((cx-2 + Math.cos(wt2)*wrx2)|0, (wcy2 + Math.sin(wt2)*wry2)|0, sk.dark, true);
+      }
+    }
 
     sOutline();
 
     // 눈 — 머리 앞쪽
-    var eR = 눈큰 ? 8 : 4;
+    var eR = 눈큰 ? 11 : 3;
     var ex = (hx + hr*0.4)|0, ey = (hy - hr*0.12)|0;
     sEl(ex, ey, eR+1, eR+1, OUT, false);
     sEl(ex, ey, eR, eR, WHITE, false);
@@ -517,13 +551,13 @@
 
     /* 더듬이 — 머리 위. 1픽셀 선으로 그렸더니 «긁힌 자국» 처럼 보였다.
        걸을 때 살짝 흔들리게 하되, 굵기를 주어 더듬이로 읽히게 한다 */
-    var aL = 더듬이 ? 16 : 6;
-    var 흔 = Math.sin(걸음*1.5) * (더듬이 ? 2.5 : 0.8);
+    var aL = 더듬이 ? 22 : 4;
+    var 흔 = Math.sin(걸음*1.5) * (더듬이 ? 3.5 : 0.6);
     for (var d=0;d<2;d++) {
       var bx2 = hx - 2 + d*6, by2 = (hy - hr + 1)|0;
       var tipx = bx2 + 흔 + aL*0.22, tipy = by2 - aL;
-      sLine(bx2, by2, tipx|0, tipy|0, 1, OUT, false);
-      sEl(tipx|0, (tipy-2)|0, 2, 2, 더듬이 ? sk.lite : sk.mid, false);
+      sLine(bx2, by2, tipx|0, tipy|0, 더듬이 ? 1 : 0, OUT, false);
+      sEl(tipx|0, (tipy-2)|0, 더듬이 ? 3 : 1, 더듬이 ? 3 : 1, 더듬이 ? sk.lite : sk.mid, false);
     }
   }
 

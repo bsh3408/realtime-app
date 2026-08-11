@@ -13,7 +13,7 @@
  body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#1c2748 0,transparent 60%),var(--bg);
       color:var(--ink);font-family:system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
       line-height:1.4;overflow-x:hidden}
- .wrap{max-width:1600px;margin:0 auto;padding:14px 18px 30px}
+ .wrap{max-width:2200px;margin:0 auto;padding:12px 16px 16px}
 
  .top{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:12px}
  .top .t{font-size:22px;font-weight:800;letter-spacing:-.02em}
@@ -23,29 +23,31 @@
  .ev{background:rgba(255,107,107,.14);border:1px solid var(--bad);border-radius:12px;
      padding:8px 16px;font-size:15px;font-weight:700}
 
- .cols{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
- @media(max-width:1100px){.cols{grid-template-columns:1fr}}
+ /* 판은 화면을 다 쓴다 — 뒤에 앉은 학생이 구역 하나하나를 알아봐야 한다.
+    유전자 풀 표는 옆에 늘 펼쳐 두지 않고 «🧬 유전자 풀» 단추로 띄운다 */
+ .cols{display:block}
  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
  .plabel{font-size:12.5px;color:var(--sub);margin:0 0 10px;font-weight:700}
 
  /* 보드 */
- .board{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
- .cell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;
+ /* 판이 화면(가로로 긴 빔)을 꽉 채우게 한다.
+    칸을 정사각으로 두면 세로가 모자라 다섯 줄 가운데 셋만 보였다.
+    줄 높이를 화면에 맞추면 칸이 가로로 넓어지면서 넓이는 오히려 커진다 */
+ .board{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
+        gap:7px;height:calc(100vh - 182px);min-height:480px}
+ .cell{position:relative;border-radius:12px;overflow:hidden;cursor:pointer;
        box-shadow:inset 0 0 0 1px #ffffff18;transition:transform .12s, box-shadow .12s;
        display:flex;flex-direction:column}
  .cell:hover{transform:scale(1.035);box-shadow:inset 0 0 0 2px var(--accent2),0 6px 22px #0007;z-index:3}
- .cell .hd{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
-           padding:5px 7px 2px;text-shadow:0 1px 3px #0008}
- .cell .hd .co{opacity:.55;font-size:10px}
- .cell .n{position:absolute;top:5px;right:7px;font-size:13px;font-weight:800;color:#fff;
-          background:#0009;border:1px solid #ffffff2e;border-radius:8px;padding:0 7px}
- .cell .mini{flex:1;display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start;padding:2px 5px}
- .cell .mini img{width:21px;image-rendering:pixelated;display:block}
- .cell .pool{padding:4px 6px 6px;display:flex;gap:2px;align-items:flex-end;height:34px}
- .cell .pool i{flex:1;background:#ffffff55;border-radius:2px 2px 0 0;min-height:2px}
- .cell .pool i.hid{background:var(--accent2)}
- .cell.empty .pool{display:none}
- .axis{color:var(--sub);font-size:12px;margin:0 2px 8px}
+ .cell .hd{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:800;
+           padding:8px 11px 3px;text-shadow:0 1px 3px #0008}
+ .cell .hd .co{opacity:.6;font-size:14px}
+ .cell .n{position:absolute;top:8px;right:11px;font-size:19px;font-weight:800;color:#fff;
+          background:#0009;border:1px solid #ffffff2e;border-radius:9px;padding:1px 10px}
+ .cell .mini{flex:1;display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;padding:4px 8px 8px}
+ .cell .mini img{width:44px;image-rendering:pixelated;display:block}
+ .axis{color:var(--sub);font-size:14px;margin:0 2px 8px}
+ .cell{border-radius:14px}
 
  /* 유전자 풀 */
  .sparks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -91,6 +93,40 @@
  .msg{border-radius:10px;padding:9px 12px;font-size:13px;margin-top:10px;
       border:1px solid var(--line);color:var(--sub)}
  .hide{display:none}
+
+ /* ══ 사건 연출 ══════════════════════════════════════════════════
+    «7마리 사망» 한 줄로는 아무도 안 놀란다. 반 전체가 같은 순간에
+    같은 것을 보고 «어?» 해야 그 다음 이야기가 된다 */
+ #boom{position:fixed;inset:0;z-index:200;display:none;pointer-events:none;overflow:hidden}
+ #boom.on{display:block;pointer-events:auto}
+ #boom .veil{position:absolute;inset:0;background:#000c;animation:veilIn .35s ease-out}
+ #boom .flash{position:absolute;inset:0;background:#fff;animation:flash .55s ease-out forwards}
+ @keyframes flash{0%{opacity:.92}100%{opacity:0}}
+ @keyframes veilIn{from{opacity:0}to{opacity:1}}
+ #boom .mid{position:absolute;inset:0;display:flex;flex-direction:column;
+            align-items:center;justify-content:center;text-align:center}
+ #boom .big{font-size:150px;line-height:1;animation:thump 1.1s cubic-bezier(.2,1.6,.4,1) both}
+ @keyframes thump{0%{transform:scale(.1) rotate(-25deg);opacity:0}
+                  55%{transform:scale(1.35) rotate(6deg);opacity:1}
+                  100%{transform:scale(1) rotate(0)}}
+ #boom .nm{font-size:56px;font-weight:800;color:#ffd36b;margin-top:6px;
+           text-shadow:0 3px 20px #000;animation:up .5s .25s both}
+ #boom .say{font-size:26px;color:#eaf0ff;margin-top:8px;animation:up .5s .45s both}
+ #boom .kill{font-size:34px;font-weight:800;margin-top:20px;padding:10px 26px;border-radius:16px;
+             background:#ff6b6b22;border:2px solid #ff6b6b;color:#ffb3c4;animation:up .5s .8s both}
+ #boom .whr{font-size:20px;color:#9aa6cc;margin-top:12px;animation:up .5s 1s both}
+ #boom .tap{font-size:15px;color:#7b86ab;margin-top:26px;animation:up .5s 1.4s both}
+ @keyframes up{from{transform:translateY(22px);opacity:0}to{transform:none;opacity:1}}
+ #boom.shake .mid{animation:shk .5s 3}
+ @keyframes shk{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,5px)}
+                40%{transform:translate(8px,-6px)}60%{transform:translate(-6px,-4px)}
+                80%{transform:translate(7px,6px)}}
+ #boom i.dot{position:absolute;border-radius:50%;animation:fall linear forwards}
+ @keyframes fall{from{transform:translateY(-40px) rotate(0)}
+                 to{transform:translateY(105vh) rotate(540deg)}}
+ .cell.hit{animation:hit .7s 4}
+ @keyframes hit{0%,100%{box-shadow:inset 0 0 0 1px #ffffff18}
+                50%{box-shadow:inset 0 0 0 5px #ff6b6b,0 0 30px #ff6b6b}}
 </style>
 
 <script src="../../shared/config.js"></script>
@@ -117,6 +153,9 @@
     <div class="m">지금<b id="tPhase" style="font-size:19px">—</b></div>
     <div class="m">전체 개체<b id="tPop">0</b></div>
     <div class="sp"></div>
+    <button id="poolBtn" style="background:var(--panel2);border:1px solid var(--line);
+      color:var(--ink);border-radius:11px;padding:9px 15px;font:inherit;font-size:14px;
+      font-weight:700;cursor:pointer">🧬 유전자 풀</button>
     <div id="evBox"></div>
   </div>
 
@@ -128,23 +167,33 @@
       <div class="msg" id="envMsg"></div>
     </div>
 
-    <div class="panel">
-      <div class="plabel">환경별 유전자 풀 — 우성 대립유전자 비율(%) · 🔒는 겉모습에 안 드러나는 형질</div>
-      <div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
-      <div class="msg"><b style="color:var(--accent2)">가로로 읽지 말고 세로로 읽으세요.</b>
-        같은 형질인데 환경마다 숫자가 반대로 가는 것이 자연선택입니다.
-        (반 전체를 합치면 서로 상쇄돼서 아무것도 안 보입니다)</div>
-      <details style="margin-top:10px">
-        <summary style="cursor:pointer;font-size:12.5px;color:var(--sub);font-weight:700">
-          반 전체 합계의 세대별 변화 (참고용 — 대개 평평합니다)</summary>
-        <div class="sparks" id="sparks" style="margin-top:8px"></div>
-      </details>
-    </div>
   </div>
 </section>
 </div>
 
 <div id="novelBig"></div>
+<div id="boom"><div class="veil"></div><div class="flash"></div><div class="mid"></div></div>
+
+<!-- 유전자 풀 팝업 — 판을 가리지 않게 필요할 때만 띄운다 -->
+<div class="modal" id="poolModal">
+  <div class="box">
+    <div class="bh">
+      <span class="nm">🧬 환경별 유전자 풀</span>
+      <span class="sub">우성 대립유전자 비율(%) · 🔒는 겉모습에 안 드러나는 형질</span>
+      <span class="sp"></span>
+      <button id="poolClose">닫기 ✕</button>
+    </div>
+    <div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
+    <div class="msg"><b style="color:var(--accent2)">가로로 읽지 말고 세로로 읽으세요.</b>
+      같은 형질인데 환경마다 숫자가 반대로 가는 것이 자연선택입니다.
+      (반 전체를 합치면 서로 상쇄돼서 아무것도 안 보입니다)</div>
+    <details style="margin-top:10px">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--sub);font-weight:700">
+        반 전체 합계의 세대별 변화 (참고용 — 대개 평평합니다)</summary>
+      <div class="sparks" id="sparks" style="margin-top:8px"></div>
+    </details>
+  </div>
+</div>
 
 <!-- 구역 팝업 -->
 <div class="modal" id="modal">
@@ -212,9 +261,54 @@ function paint(){
   // 판이 그대로면 다시 그리지 않는다 — 빔이 깜빡인다
   const sig = JSON.stringify([T.board, T.cells.map(c=>c.list.length), T.turn]);
   if (sig !== 보드사인) { 보드사인 = sig; paintBoard(); }
-  paintHeat();
-  paintSparks();
+  if ($('#poolModal').classList.contains('on')) { paintHeat(); paintSparks(); }
   if (모달칸) 팝업그리기(모달칸.r, 모달칸.c, true);
+  사건연출();
+}
+
+/* ══ 사건 연출 ══════════════════════════════════════════════════ */
+let 본사건 = null;
+const 사건색 = { volcano:['#ff7a3d','#ffd36b'], meteor:['#c9a37a','#ff9c6b'],
+                 quake:['#a08b6b','#d9c39a'], sink:['#4aa3e0','#9fd8ff'],
+                 rise:['#8a8f9a','#cbd3e0'], hunter:['#8b5cf6','#22d3ee'] };
+function 사건연출(){
+  const D = T.result && T.result.재해;
+  if(!D){ return; }
+  const 열쇠 = T.turn + ':' + D.이름 + ':' + D.죽음;
+  if(본사건 === 열쇠) return;
+  본사건 = 열쇠;
+
+  const box = $('#boom'), mid = box.querySelector('.mid');
+  const 칸글 = (D.칸들||[]).map(x=>CO(x.r,x.c)).join(' · ');
+  mid.innerHTML = '<div class="big">'+D.emoji+'</div>'
+    + '<div class="nm">'+D.이름+'</div>'
+    + '<div class="say">'+D.말+'</div>'
+    + '<div class="kill">'+D.죽음+'마리 사망 &nbsp;·&nbsp; '+(D.살아남음||0)+'마리 생존</div>'
+    + (칸글 ? '<div class="whr">덮친 구역 &nbsp;'+칸글+'</div>' : '')
+    + '<div class="whr">살아남은 것들은 무엇을 가지고 있었을까요?</div>'
+    + '<div class="tap">아무 곳이나 누르면 닫힙니다</div>';
+
+  // 떨어지는 것들 — 사건마다 색을 달리해 «무슨 일인지» 가 색으로도 온다
+  const 색 = 사건색[D.k] || 사건색.quake;
+  box.querySelectorAll('i.dot').forEach(e=>e.remove());
+  for(let i=0;i<70;i++){
+    const d = document.createElement('i'); d.className='dot';
+    const sz = 4+Math.random()*13;
+    d.style.cssText = 'width:'+sz+'px;height:'+sz+'px;left:'+(Math.random()*100)+'vw;'
+      + 'background:'+색[i%2]+';opacity:'+(0.35+Math.random()*0.5)
+      + ';animation-duration:'+(1.6+Math.random()*2.4)+'s;animation-delay:'+(Math.random()*1.2)+'s';
+    box.appendChild(d);
+  }
+  box.classList.add('on');
+  box.classList.toggle('shake', D.k==='quake' || D.k==='volcano' || D.k==='meteor');
+  // 판에서도 맞은 칸이 깜빡인다
+  (D.칸들||[]).forEach(x=>{
+    const el = $$('#board .cell')[x.r*5+x.c];
+    if(el){ el.classList.add('hit'); setTimeout(()=>el.classList.remove('hit'), 3200); }
+  });
+  const 끄기 = ()=>{ box.classList.remove('on'); box.onclick=null; };
+  box.onclick = 끄기;
+  setTimeout(끄기, 9000);
 }
 
 function paintBoard(){
@@ -229,12 +323,7 @@ function paintBoard(){
           + '<span>'+b.name+'</span></div>';
     if (cell.list.length) h += '<div class="n">'+cell.list.length+'</div>';
     h += '<div class="mini">'
-      + cell.list.slice(0,12).map(a=>'<img src="'+sprite(a.ph)+'">').join('')
-      + '</div>';
-    // 이 구역의 유전자 풀을 작은 막대로
-    const f = 구역빈도(r,c);
-    if (f.n) h += '<div class="pool">' + GENES.map(G =>
-        '<i class="'+(G.보임?'':'hid')+'" style="height:'+Math.max(2,f.f[G.k]*0.30)+'px"></i>').join('')
+      + cell.list.slice(0,24).map(a=>'<img src="'+sprite(a.ph)+'">').join('')
       + '</div>';
     el.innerHTML = h;
     el.onclick = ()=> 팝업열기(r,c);
@@ -300,7 +389,7 @@ function paintSparks(){
 }
 
 /* ══ 구역 팝업 — 외계인들이 돌아다닌다 ══════════════════════════ */
-let 모달칸 = null, 배우 = [], 애니 = null, 그림장 = {};
+let 모달칸 = null, 배우 = [], 애니 = null, 그림장 = {}, 정면장 = {};
 
 /* 없던 형질 — 빔 화면에서 제일 크게 보여야 한다.
    이 순간을 반 전체가 함께 봐야 «변이가 먼저, 선택은 그 다음» 이 남는다 */
@@ -335,9 +424,13 @@ function 팝업열기(r,c){
   팝업그리기(r,c,false);
   if(!애니) 돌리기();
 }
+$('#poolBtn').onclick = ()=>{ $('#poolModal').classList.add('on'); paintHeat(); paintSparks(); };
+$('#poolClose').onclick = ()=> $('#poolModal').classList.remove('on');
+$('#poolModal').onclick = e => { if(e.target.id==='poolModal') $('#poolModal').classList.remove('on'); };
+
 $('#mClose').onclick = 닫기;
 $('#modal').onclick = e => { if(e.target.id==='modal') 닫기(); };
-addEventListener('keydown', e => { if(e.key==='Escape') 닫기(); });
+addEventListener('keydown', e => { if(e.key==='Escape'){ 닫기(); $('#poolModal').classList.remove('on'); } });
 function 닫기(){
   모달칸=null; $('#modal').classList.remove('on');
   if(애니){ cancelAnimationFrame(애니); 애니=null; }
@@ -363,12 +456,13 @@ function 팝업그리기(r,c,조용히){
     배우 = list.map((a,i)=>{
       // 옆모습 걷기 네 장. 앞모습과 «같은 겉모습 열두 자리» 로 그린다
       if(!그림장[a.ph]) 그림장[a.ph] = PIX.걷기(a.ph);
+      if(!정면장[a.ph]) { const im=new Image(); im.src = sprite(a.ph); 정면장[a.ph] = im; }
       return { ph:a.ph, name:a.name,
         x: 60 + Math.random()*(cv.width-200),
         y: 150 + Math.random()*(cv.height-230),
         dir: Math.random()<0.5?-1:1,
         spd: 0.25 + Math.random()*0.75,
-        ph2: Math.random()*6, 쉼: 0 };
+        ph2: Math.random()*6, 쉼: 0, 쉼전체: 1 };
     });
   }
 
@@ -405,27 +499,43 @@ function 돌리기(){
         if(a.x < 30){ a.x=30; a.dir=1; }
         if(a.x > cv.width-130){ a.x=cv.width-130; a.dir=-1; }
         if(Math.random()<0.006){ a.dir*=-1; }
-        if(Math.random()<0.004){ a.쉼 = 40+Math.random()*70; }
+        if(Math.random()<0.006){ a.쉼전체 = 45+Math.random()*80; a.쉼 = a.쉼전체; }
         if(Math.random()<0.008){ a.y = Math.max(140, Math.min(cv.height-90, a.y+(Math.random()-0.5)*40)); }
       }
-      /* 걷기 — 네 장을 돌려 가며 쓴다. 멈춰 서 있으면 첫 장으로 고정한다 */
+      /* 멈춰 서면 이쪽을 돌아본다 — 앞모습으로 바꾼다.
+         옆모습만 계속 쓰면 겉모습의 절반(눈 크기·더듬이·뿔의 좌우 대칭)이
+         안 보인다. 걸을 때는 옆, 서면 정면 — 그래야 둘 다 눈에 들어온다.
+         돌아서는 동안(쉼의 처음·끝 몇 프레임)에는 가로로 눌러 «도는 것» 처럼 */
       const 장 = 그림장[a.ph];
       if(!장) continue;
-      const im = 장[a.쉼 ? 0 : (Math.floor(a.ph2*1.6) % 4)];
+      const 정면 = 정면장[a.ph];
+      const 서있음 = a.쉼 > 0 && 정면 && 정면.complete && 정면.naturalWidth;
+      const 도는중 = a.쉼 > 0 && (a.쉼 > a.쉼전체-8 || a.쉼 < 8);
+      let im, s, sh, 납작 = 1;
+      if (서있음) {
+        im = 정면;                       // 앞모습 120 × 128
+        s = 78; sh = s * (PIX.H / PIX.W);
+        if (도는중) 납작 = 0.45;
+      } else {
+        im = 장[Math.floor(a.ph2*1.6) % 4];   // 옆모습 112 × 88
+        s = 104; sh = s * (PIX.SH / PIX.SW);
+      }
       if(!im || !im.complete || !im.naturalWidth) continue;
-      // 옆모습은 가로가 길다 (112 × 88)
-      const s = 104, sh = s * (PIX.SH / PIX.SW);
       const bob = a.쉼 ? 0 : Math.sin(a.ph2*2)*1.5;
+      // 발이 같은 높이에 닿게 — 앞모습이 더 길어서 그냥 그리면 붕 뜬다
+      const 발높이 = 104 * (PIX.SH / PIX.SW);
+      const dy = a.y + bob + (발높이 - sh);
+      const dx = a.x + (104 - s*납작)/2;
       ctx.save();
       // 그림자
       ctx.fillStyle='#0004';
-      ctx.beginPath(); ctx.ellipse(a.x+s/2, a.y+sh*0.95, s*0.22, s*0.05, 0, 0, 6.3); ctx.fill();
-      if(a.dir<0){ ctx.translate(a.x+s, a.y+bob); ctx.scale(-1,1); ctx.drawImage(im,0,0,s,sh); }
-      else ctx.drawImage(im, a.x, a.y+bob, s, sh);
+      ctx.beginPath(); ctx.ellipse(a.x+52, a.y+발높이*0.95, 23, 5, 0, 0, 6.3); ctx.fill();
+      if(!서있음 && a.dir<0){ ctx.translate(a.x+s, a.y+bob); ctx.scale(-1,1); ctx.drawImage(im,0,0,s,sh); }
+      else ctx.drawImage(im, dx, dy, s*납작, sh);
       ctx.restore();
       // 이름표
       ctx.font='bold 13px system-ui'; ctx.textAlign='center';
-      const nx=a.x+s/2, ny=a.y+bob-6;
+      const nx=a.x+52, ny=dy-6;
       const w=ctx.measureText(a.name).width+12;
       ctx.fillStyle='#000000aa'; ctx.fillRect(nx-w/2, ny-14, w, 18);
       ctx.fillStyle='#fff'; ctx.fillText(a.name, nx, ny);
