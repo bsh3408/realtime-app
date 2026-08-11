@@ -205,14 +205,21 @@
               function (e) { return { ok:false, msg:e.message }; });
     },
 
-    /* 유전자 변형 — 어느 자리가 어떻게 바뀔지는 서버가 무작위로 정한다.
-       학생이 «설계» 하지 못하게 하려는 것이다. 대신 무엇이 바뀌었는지는 알려 준다 */
-    '유전자변형': function (sid, aid) {
-      return EVO.rpc('evo_mutate_gene', {
-        p_player:+sid, p_token:EVO.token(), p_alien:+aid
-      }).then(function (r) {
-        return { ok:true, dna:r.dna, pos:r.pos, from:r.from, to:r.to };
-      }, function (e) { return { ok:false, msg:e.message }; });
+    /* 유전자 고치기 — 형질 하나를 골라 원하는 값으로. DNA 가 든다 */
+    '유전자고치기': function (sid, aid, pos, val) {
+      return EVO.rpc('evo_edit_gene', {
+        p_player:+sid, p_token:EVO.token(), p_alien:+aid, p_pos:pos, p_val:val
+      }).then(function (남은) { return { ok:true, dna:남은 }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    /* 제작 완료 — 개체를 받는 것과 «다 만들었다» 는 다른 일이다.
+       선생님이 누가 아직 고치는 중인지 알아야 다음 단계로 넘길 수 있다 */
+    '제작완료': function (sid, done) {
+      return EVO.rpc('evo_finish_setup', {
+        p_player:+sid, p_token:EVO.token(), p_done:!!done
+      }).then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
     },
 
     /* 정찰 — 이번 세대 동안 적응도를 볼 수 있게 산다.
@@ -243,6 +250,7 @@
         .then(function () { return { ok:true }; },
               function (e) { return { ok:false, msg:e.message }; });
     },
+    /* list = [{player, amount, award}] — 무슨 상인지까지 넘긴다 */
     'DNA지급': function (code, list) {
       return EVO.rpc('evo_grant_dna', { p_code:code, p_game:EVO.gameId, p_list:list })
         .then(function () { return { ok:true }; },
@@ -471,6 +479,8 @@
              return v;
            }),
            dna: me.dna || 0, dnaUsed: me.dna_used || 0, trades:거래낸수,
+           /* 이번 세대에 받은 상. 학생 화면이 이걸 보고 팝업을 한 번 띄운다 */
+           award: (me.award && me.award.turn === g.turn) ? me.award : null,
            /* 정찰을 산 학생만 적응도를 본다. 계산은 학생 브라우저가 한다 */
            scout: (me.scout_turn != null && me.scout_turn === g.turn),
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },

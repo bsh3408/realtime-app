@@ -63,6 +63,9 @@
  .res{border-radius:12px;padding:12px 14px;font-size:14px;border:1px solid var(--accent2);
       background:rgba(255,211,107,.10)}
  .res b{color:var(--accent2)}
+ .res.waiting{border-color:var(--rec);background:rgba(255,143,176,.10)}
+ .res.waiting .big{color:var(--rec)}
+ .res.waiting b{color:var(--rec)}
  .res .big{font-size:26px;font-weight:800;color:var(--accent2);line-height:1.2}
 
  .sparks{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
@@ -112,6 +115,7 @@
     <button class="primary" id="btnNext">다음 단계 ▶</button>
   </div>
 
+  <div id="doneBar" class="res hide" style="margin-bottom:12px"></div>
   <div id="resBox"></div>
 
   <div class="cols">
@@ -319,11 +323,13 @@ function paintAwards(){
     +'<span id="awardMsg" style="margin-left:8px;font-size:12px;color:var(--sub)"></span></div>';
   $('#btnAward').onclick=async ()=>{
     const amt=(T.settings&&T.settings.awardDna)||3;
-    const 목록=(window.__수상||[]).map(x=>({player:+x.id, amount:amt}));
+    // 무슨 상인지까지 넘겨야 학생 화면에 «개체왕» 이라고 뜬다
+    const 목록=(window.__수상||[]).map(x=>({player:+x.id, amount:amt, award:x.상}));
     if(!목록.length) return;
     $('#btnAward').disabled=true;
     const r=await RUN('DNA지급',CODE,목록);
-    $('#awardMsg').textContent = r.ok ? '주었습니다.' : r.msg;
+    $('#awardMsg').textContent = r.ok
+      ? '주었습니다. 받은 학생 화면에 팝업이 뜹니다.' : r.msg;
     await poll();
   };
 }
@@ -386,8 +392,24 @@ function paintResult(){
 }
 
 function paintStudents(){
+  /* 제작 시간에는 «누가 다 만들었나» 가 제일 급한 정보다.
+     이걸 모르면 아직 고치는 중인 학생을 두고 다음 단계로 넘겨 버린다 */
+  const 제작중 = (T.phase === 'setup');
+  const 끝 = (T.학생별||[]).filter(x=>x.ready).length, 전체 = (T.학생별||[]).length;
+  $('#doneBar').classList.toggle('hide', !제작중);
+  if(제작중){
+    const 아직 = (T.학생별||[]).filter(x=>!x.ready).map(x=>x.name);
+    $('#doneBar').className = 'res' + (전체 && 끝===전체 ? '' : ' waiting');
+    $('#doneBar').innerHTML = '<span class="big">제작 완료 '+끝+' / '+전체+'명</span>'
+      + (아직.length
+          ? '<br>아직 만드는 중 — <b>'+아직.join(' · ')+'</b>'
+          : (전체 ? '<br>모두 끝났습니다. 다음 단계로 넘어가세요.' : '<br>아직 참가한 학생이 없습니다.'));
+  }
+
   const rows=(T.학생별||[]).map(s=>
-    '<tr><td><span class="dot" style="background:'+colorOf(s.id)+'"></span>'+s.name+'</td>'
+    '<tr><td><span class="dot" style="background:'+colorOf(s.id)+'"></span>'+s.name
+    +(제작중 ? (s.ready ? ' <b style="color:var(--accent)">✓</b>'
+                        : ' <span style="color:var(--sub);font-size:11px">…</span>') : '')+'</td>'
     +'<td class="n"'+(s.live?'':' style="color:var(--bad);font-weight:800"')+'>'+s.live+'</td>'
     +'<td class="n">'+(s.fit||0)+'</td><td class="n">'+(s.biomes||0)+'</td><td class="n">'+(s.cross||0)+'</td>'
     +'<td class="n"><b style="color:var(--accent)">'+(s.dna||0)+'</b></td>'
