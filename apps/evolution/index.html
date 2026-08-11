@@ -104,6 +104,12 @@
  .req:last-child{border-bottom:0}
  .req .t{flex:1;font-size:12.5px}
  .req button{padding:7px 10px;font-size:12px;flex:none}
+ .dna{background:#123a2c;border:1px solid var(--accent);color:var(--accent);border-radius:9px;
+      padding:2px 9px;font-size:12px;font-weight:800;font-family:ui-monospace,monospace}
+ .warn{background:#3a1f00;border:1px solid #ffa94d;color:#ffd8a8;border-radius:10px;
+       padding:8px 11px;font-size:12.5px;margin-top:9px;font-weight:700}
+ .dis{background:#301218;border:1px solid var(--bad);color:#ffdfe8;border-radius:10px;
+      padding:10px 12px;font-size:13px;margin-top:9px;font-weight:700}
  .badge{background:var(--rec);color:#3a0018;border-radius:9px;padding:1px 7px;font-size:11px;font-weight:800}
  .fc{background:#2a1f00;border:1px solid var(--accent2);color:var(--accent2);border-radius:9px;
      padding:7px 10px;font-size:12px;margin-top:9px}
@@ -115,6 +121,7 @@
   <span class="gen">세대 <b id="hGen">0</b></span>
   <span class="ph" id="hPhase">연결 중…</span>
   <span class="badge hide" id="hBadge"></span>
+  <span class="dna" id="hDna">DNA 0</span>
   <span class="tm" id="hTime"></span>
 </div></header>
 
@@ -141,18 +148,14 @@
     <div class="plabel">① 시작 구역을 고르세요 — 내 열 마리가 <b>모두 여기서</b> 시작합니다</div>
     <div class="axis">↑건조 · ↓습함 &nbsp;|&nbsp; ←추움 · 더움→</div>
     <div class="board" id="setupBoard"></div>
-    <div id="homeInfo" class="msg i">구역을 누르면 그곳에서 유리한 형질이 나옵니다.</div>
+    <div id="homeInfo" class="msg i">구역을 고르면 내 외계인 열 마리가 거기서 태어납니다.</div>
   </div>
 
   <div class="panel">
-    <div class="plabel">② 개체를 눌러 유전자를 정하세요 —
-      <b>🔒 표시는 겉모습에 드러나지 않는 형질</b>입니다(수명·번식력 등).
-      남은 물론 나도 그림만 봐서는 알 수 없습니다. 열 마리는 <b>서로 달라야</b> 합니다.</div>
+    <div class="plabel">② 개체를 눌러 유전자를 고치세요 — 한 자리에
+      <b style="color:var(--accent)">DNA 1</b>. <b>🔒는 겉모습에 안 드러나는 형질</b>입니다.</div>
     <div class="strip" id="setupStrip"></div>
-    <div class="row" style="margin-top:6px">
-      <button id="allRnd">🎲 전체 무작위</button>
-      <button id="oneRnd">🎲 이 개체만</button>
-    </div>
+
   </div>
 
   <div class="panel">
@@ -167,12 +170,14 @@
     <div id="editGenes" style="margin-top:8px"></div>
   </div>
 
-  <div class="row"><button class="primary" id="submitGeno">이 유전자로 시작하기</button></div>
+  <div class="row"><button class="primary" id="getAliens">이 구역에서 외계인 받기</button></div>
   <div id="setupMsg"></div>
 </section>
 
 <!-- ═══ 게임 ═══ -->
 <section id="play" class="hide">
+
+  <div id="disBox"></div>
 
   <div class="panel hide" id="inboxPanel">
     <div class="plabel">교배 신청함</div>
@@ -235,7 +240,7 @@ let S = null;                 // 서버가 준 학생상태
 let tRef = Date.now();        // 마지막으로 서버와 통신한 시각
 let sel = null;               // 고른 내 개체 id
 let selCell = null;           // 고른 칸
-let draftGenos = [], editIdx = 0, home = null;
+let editIdx = 0, home = null;
 let pendingMoves = {};        // 아직 서버에 못 보낸 이동
 let saveTimer = null;
 
@@ -265,7 +270,6 @@ async function boot(){
   GENES = RULES.GENES;
   BIOMES = RULES.BIOMES;
   BIOMES.forEach(b => BIOME[b.key] = b);
-  draftGenos = Array.from({length:10}, ()=>randGeno());
   loop();
 }
 /* 단계마다 묻는 간격을 다르게 한다.
@@ -277,7 +281,6 @@ function loop(){
     setTimeout(loop, ms);
   });
 }
-function randGeno(){ let s=''; for(let i=0;i<9;i++) s+=String(Math.floor(Math.random()*3)); return s; }
 
 /* ══════════ 폴링 ══════════ */
 let busy=false;
@@ -319,11 +322,19 @@ function paint(){
   $('#hPhase').textContent = S.phaseName || '';
   paintTimer();
 
+  const D = S.result && S.result.재해;
+  $('#disBox').innerHTML = D
+    ? '<div class="dis">'+D.emoji+' <b>'+D.이름+'</b> — '+D.말+'<br>'
+      +'덮친 구역 '+D.칸들.map(x=>CO(x.r,x.c)).join(' · ')
+      +' · 전체 <b>'+D.죽음+'마리 사망</b><br>'
+      +'<span style="font-weight:400;color:var(--sub)">무엇을 가진 개체가 살아남았을까? 학습지에 적어 두세요.</span></div>'
+    : '';
   const nInbox=(S.inbox||[]).length;
   $('#hBadge').textContent = nInbox ? ('신청 '+nInbox) : '';
   $('#hBadge').classList.toggle('hide', !nInbox);
 
-  const setupOn = (S.phase==='setup' && !S.me.ready);
+  $('#hDna').textContent='DNA '+(S.me.dna||0);
+  const setupOn = (S.phase==='setup');
   $('#setup').classList.toggle('hide', !setupOn);
   $('#play').classList.toggle('hide', setupOn);
   $('#join').classList.add('hide');
@@ -345,77 +356,82 @@ function paintTimer(){
 }
 setInterval(()=>{ if(S&&S.endAt) paintTimer(); }, 1000);
 
-/* ── 유전자 제작 ── */
+/* ── 유전자 제작 ──
+   개체는 «무작위» 로 받는다. 처음부터 골라 만들 수 없다.
+   마음에 안 들면 DNA 를 써서 한 자리씩 고친다. */
 function paintSetup(){
+  const list = S.me.aliens||[], 받았나 = list.length>0;
   $('#stN').textContent = (S.settings&&S.settings.start)||10;
-  const want = (S.settings&&S.settings.start)||10;
-  while(draftGenos.length<want) draftGenos.push(randGeno());
-  draftGenos.length = want;
-
-  // 보드
   const bd=$('#setupBoard'); bd.innerHTML='';
   for(let r=0;r<5;r++)for(let c=0;c<5;c++){
     const b=biome(S.board[r][c]);
     const el=document.createElement('div'); el.className='cell';
     el.style.background=b.bg; el.style.color=b.ink;
     el.innerHTML='<div class="co">'+CO(r,c)+'</div><div class="em">'+b.emoji+'</div><div class="nm">'+b.name+'</div>';
-    if(home && home.r===r && home.c===c) el.classList.add('here');
-    el.onclick=()=>{ home={r,c};
+    if(home&&home.r===r&&home.c===c) el.classList.add('here');
+    if(받았나) el.classList.add('dim');
+    el.onclick=()=>{ if(받았나) return; home={r,c};
       $('#homeInfo').className='msg g';
       $('#homeInfo').innerHTML='<b>'+CO(r,c)+' · '+b.emoji+' '+b.name+'</b>에서 시작합니다.<br>'
-        +'<span style="color:var(--sub)">여기서 어떤 형질이 유리한지는 아무도 알려 주지 않습니다. '
-        +'살아남는 것을 보고 알아내세요.</span>';
+        +'<span style="color:var(--sub)">여기서 무엇이 유리한지는 아무도 알려 주지 않습니다. '
+        +'학습지에 적어 가며 알아내세요.</span>';
       paintSetup(); };
     bd.appendChild(el);
   }
-  // 개체 띠
   const st=$('#setupStrip'); st.innerHTML='';
-  draftGenos.forEach((g,i)=>{
+  if(!받았나){
+    st.innerHTML='<div class="msg i" style="margin:0">구역을 고르고 <b>외계인 받기</b>를 누르면 '
+      +'열 마리가 <b>무작위 유전자</b>로 태어납니다.</div>';
+    $('#editGeno').innerHTML=''; $('#editFit').innerHTML=''; $('#editGenes').innerHTML='';
+    $('#getAliens').style.display='';
+    return;
+  }
+  $('#getAliens').style.display='none';
+  if(editIdx>=list.length) editIdx=0;
+  list.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='tile'+(i===editIdx?' on':'');
-    d.innerHTML='<img src="'+sprite(phOf(g))+'"><div class="lb">'+(i+1)+'번</div>';
+    d.innerHTML='<img src="'+sprite(phOf(a.g))+'"><div class="lb">'+(i+1)+'번</div>';
     d.onclick=()=>{ editIdx=i; paintSetup(); };
     st.appendChild(d);
   });
-  // 편집
-  const g=draftGenos[editIdx];
+  const A=list[editIdx], g=A.g;
   $('#editNo').textContent=(editIdx+1)+'번';
   $('#setupPrev').src=sprite(phOf(g));
   $('#editGeno').innerHTML='유전자형 <b>'+GENES.map((_,i)=>genoLabel(g,i)).join(' ')+'</b>';
-  $('#editFit').innerHTML = home
-    ? '<span style="color:var(--sub)">시작 구역 <b>'+CO(home.r,home.c)+'</b>. '
-      +'이 유전자가 거기서 잘 살지는 <b>해 봐야</b> 압니다.</span>'
-    : '<span style="color:var(--sub)">시작 구역을 고르세요.</span>';
-
+  $('#editFit').innerHTML='남은 <b style="color:var(--accent)">DNA '+(S.me.dna||0)+'</b>'
+    +' <span style="color:var(--sub)">· 한 자리 고치기 = DNA 1</span>';
   const box=$('#editGenes'); box.innerHTML='';
   GENES.forEach((G,i)=>{
     const row=document.createElement('div'); row.className='grow';
     const S1=G.s.toUpperCase(), s1=G.s.toLowerCase();
-    row.innerHTML='<div class="gname">'+(G.보임?'':'🔒 ')+G.n
-      +'<small>'+S1+'='+G.d+'</small></div>';
+    row.innerHTML='<div class="gname">'+(G.보임?'':'🔒 ')+G.n+'<small>'+S1+'='+G.d+'</small></div>';
     if(!G.보임) row.style.background='#0f1526';
     const seg=document.createElement('div'); seg.className='seg';
     [[2,S1+S1,G.d],[1,S1+s1,G.d],[0,s1+s1,G.r]].forEach(([v,gl,phl])=>{
-      const b=document.createElement('button');
-      if(v===0) b.className='rec';
-      b.innerHTML = '<b>'+gl+'</b><small>'+phl+'</small>';
-      if(+g.charAt(i)===v) b.classList.add('on');
-      b.onclick=()=>{ draftGenos[editIdx]=g.substring(0,i)+v+g.substring(i+1); paintSetup(); };
-      seg.appendChild(b);
+      const bt=document.createElement('button');
+      if(v===0) bt.className='rec';
+      bt.innerHTML='<b>'+gl+'</b><small>'+phl+'</small>';
+      if(+g.charAt(i)===v) bt.classList.add('on');
+      bt.onclick=async ()=>{
+        if(+g.charAt(i)===v) return;
+        if((S.me.dna||0)<1){ alert('DNA 가 모자랍니다.'); return; }
+        bt.disabled=true;
+        const r=await RUN('유전자고치기', SID, A.i, i+1, v);
+        if(!r.ok) alert(r.msg);
+        tick(true);
+      };
+      seg.appendChild(bt);
     });
     row.appendChild(seg); box.appendChild(row);
   });
 }
-$('#allRnd').onclick=()=>{ draftGenos=draftGenos.map(()=>randGeno()); paintSetup(); };
-$('#oneRnd').onclick=()=>{ draftGenos[editIdx]=randGeno(); paintSetup(); };
-$('#submitGeno').onclick=async ()=>{
+$('#getAliens').onclick=async ()=>{
   if(!home){ $('#setupMsg').innerHTML='<div class="msg r">시작 구역을 먼저 고르세요.</div>'; return; }
-  $('#submitGeno').disabled=true;
-  try{
-    const r=await RUN('유전자제출', SID, draftGenos, home);
-    if(!r.ok){ $('#setupMsg').innerHTML='<div class="msg r">'+r.msg+'</div>'; $('#submitGeno').disabled=false; return; }
-    $('#setupMsg').innerHTML='<div class="msg g">제출했습니다. 선생님을 기다리세요.</div>';
-    tick(true);
-  }catch(e){ $('#setupMsg').innerHTML='<div class="msg r">연결이 안 됩니다.</div>'; $('#submitGeno').disabled=false; }
+  $('#getAliens').disabled=true;
+  const r=await RUN('개체받기', SID, home);
+  if(!r.ok){ $('#setupMsg').innerHTML='<div class="msg r">'+r.msg+'</div>'; $('#getAliens').disabled=false; return; }
+  $('#setupMsg').innerHTML='<div class="msg g">외계인 열 마리를 받았습니다. DNA 로 고칠 수 있습니다.</div>';
+  tick(true);
 };
 
 /* ── 보드 ── */
@@ -487,7 +503,7 @@ function paintMine(){
     let h='<img src="'+sprite(phOf(a.g))+'">';
     h+='<div class="cell-at">'+CO(p.r,p.c)+'</div>';
     if(a.bred) h+='<div class="bd">✓</div>';
-    h+='<div class="lb">'+(a.a?((a.sp!=null?a.sp:'?')+'%'):'사망')+'</div>';
+    h+='<div class="lb">'+(a.a?CO(p.r,p.c):'사망')+'</div>';
     d.innerHTML=h;
     d.onclick=()=>{ if(!a.a) return; sel=(sel===a.i?null:a.i); paint(); };
     st.appendChild(d);
@@ -512,12 +528,9 @@ function paintMine(){
   $('#myDetail').innerHTML =
     '<div style="display:flex;gap:10px;margin-top:8px"><div class="prev"><img src="'+sprite(ph)+'"></div>'
     +'<div style="flex:1"><div class="kv">자리 <b>'+CO(p.r,p.c)+'</b> · '+b.emoji+' '+b.name+'</div>'
-    +(A.sp!=null
-      ? '<div class="kv">지금 이 칸에서 살아남을 확률 '
-        +'<span class="fit" style="color:var(--accent2)">'+A.sp+'%</span>'
-        +'<div class="bar"><i style="width:'+A.sp+'%"></i></div></div>'
-        +(A.crowd>0?'<div style="color:var(--rec);font-size:11px;margin-top:3px">이 칸이 붐벼서 '
-          +A.crowd+'마리만큼 손해를 보고 있습니다.</div>':'')
+    +(A.a ? (A.crowd>0
+        ? '<div class="kv" style="color:var(--rec)">이 칸이 붐빕니다 — 넉넉한 수보다 '+A.crowd+'마리 많습니다.</div>'
+        : '<div class="kv" style="color:var(--sub)">이 칸은 붐비지 않습니다.</div>')
       : '<div class="kv" style="color:var(--sub)">죽은 개체입니다.</div>')
     +'</div></div>'
     +'<div class="plabel" style="margin:10px 0 2px">겉모습에 드러나는 형질</div>'+보임줄
@@ -624,8 +637,8 @@ function paintAction(){
       }else{
         const st=S.settings||{};
         B.innerHTML='<div class="plabel">교배할 상대를 고르세요 — 자손은 <b>부모 각자의 주인</b>에게 갑니다</div>'
-        +'<div class="msg i" style="margin-top:0">남과 교배하면 자손 <b>'+(st.kids||3)+'</b>마리, '
-        +'내 개체끼리는 <b>'+Math.max(1,Math.round(((st.kids||3)+(st.kids||3))/2)-(st.inbreed||1))+'</b>마리입니다 (근친약세).</div>'
+        +'<div class="msg i" style="margin-top:0">자손은 <b>'+(st.kid2||2)+'마리 아니면 '+(st.kid4||4)+'마리</b>입니다. '
+        +'내 개체끼리는 그보다 <b>'+(st.inbreed||1)+'마리 적게</b> 받습니다 (근친약세).</div>'
         +cands.map((c,i)=>{
           const x=c.x;
           const 남 = c.type!=='mine';
@@ -662,7 +675,9 @@ function paintAction(){
     L.textContent='환경 변화';
     B.innerHTML='<div class="msg r">행성의 기후가 바뀌었습니다. <b>어제 유리하던 형질이 오늘은 불리할 수 있습니다.</b><br>'
       +'<span style="color:var(--sub)">내 개체를 눌러 적응도가 어떻게 달라졌는지 확인해 보세요.</span></div>'
-      +(S.forecast?'<div class="fc">📡 <b>다음</b> 세대 예보 — <b>'+S.forecast+'</b></div>':'');
+      +(S.forecast?'<div class="fc">📡 <b>다음</b> 세대 예보 — <b>'+S.forecast+'</b></div>':'')
+      +(S.경보?'<div class="warn">📡 더듬이가 긴 개체 덕분에 먼저 알았습니다 — 다음 세대에 '
+        +S.경보.emoji+' <b>'+S.경보.이름+'</b> 이(가) <b>'+S.경보.칸+'</b> 근처를 덮칩니다.</div>':'');
 
   }else{
     L.textContent = S.phaseName||'대기';

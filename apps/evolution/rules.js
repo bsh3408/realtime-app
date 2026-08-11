@@ -34,6 +34,12 @@
     { k:'grip',  n:'발톱',        s:'G', d:'강함',   r:'약함',   보임:true },
     { k:'arm',   n:'팔',          s:'A', d:'있음',   r:'없음',   보임:true },
     { k:'fin',   n:'지느러미',    s:'N', d:'있음',   r:'없음',   보임:true },
+    /* 더듬이 — 감각기관.
+       어두운 곳·천적이 있는 곳에서 유리하고, 재해가 닥칠 때 먼저 알아채 도망친다.
+       그리고 «다음 재해 경보» 를 볼 수 있게 해 준다 —
+       긴 더듬이를 가진 개체가 하나라도 있으면 그 학생 화면에 경보가 뜬다.
+       보이는 형질이라, 남의 외계인을 유심히 볼 이유가 생긴다. */
+    { k:'ant',   n:'더듬이',      s:'M', d:'긺',     r:'짧음',   보임:true },
     /* 숨은 형질 4 — 겉으로 드러나지 않는다 */
     { k:'life',  n:'수명',        s:'V', d:'긺',     r:'짧음',   보임:false },
     { k:'fec',   n:'번식력',      s:'R', d:'높음',   r:'낮음',   보임:false },
@@ -51,7 +57,11 @@
        ww = 없음        — 마른 곳에서 버티지 못한다
      이게 없으면 학생이 잡종을 고를 이유가 없어 멘델이 게임에서 사라진다.
      이 사실도 학생에게 알려 주지 않는다. 여러 번 낳아 보고 알아내야 한다. */
-  var HET = { water: 14 };
+  /* 14로는 안 보였다. 사막에서는 W 자체의 효과가 너무 커서 WW 로 고정돼 버렸고
+     (WW 62% : Ww 33% : ww 5%), 나머지 칸에서는 하디-바인베르크와 구분이 안 됐다.
+     그래서 값을 올리고, 물저장을 «구역 유불리(fav)» 에서 전부 뺐다.
+     이제 물저장은 «있고 없고» 가 아니라 «Ww 일 때가 제일 좋다» 만 남는다 */
+  var HET = { water: 32 };
 
   /* ── 바이옴 ───────────────────────────────────────────────────
      왼→오른쪽으로 더워지고, 위→아래로 습해진다.
@@ -63,24 +73,24 @@
      ★ 이 표는 학생에게 절대 보여 주지 않는다 ★ */
   var BIOMES = [
     { key:'snow',   name:'눈 덮인 곳',   emoji:'❄️', t:0.05, m:0.15, bg:'#cfe6ff', ink:'#123',
-      fav:{ fur:1, color:0, water:0, arm:0, life:1, fec:0 },        w:{ fur:2, color:2 } },
+      fav:{ fur:1, color:0, arm:0, life:1 },        w:{ fur:2, color:2 } },
     { key:'tundra', name:'툰드라',       emoji:'🌫️', t:0.20, m:0.55, bg:'#b7c4cd', ink:'#123',
       fav:{ fur:1, color:0, tall:0, leg:1, life:1 },                w:{ fur:1.5 } },
     { key:'taiga',  name:'침엽수림',     emoji:'🌲', t:0.38, m:0.82, bg:'#2f5d43', ink:'#eaffe9',
-      fav:{ tall:1, arm:1, grip:1, color:1, tox:1 },                w:{ arm:1.5 } },
+      fav:{ tall:1, arm:1, grip:1, color:1, tox:1, ant:1 },         w:{ arm:1.5 } },
     { key:'grass',  name:'초원',         emoji:'🌾', t:0.52, m:0.22, bg:'#bcc96a', ink:'#1a1a00',
-      fav:{ leg:1, eye:1, tall:1, color:0, fur:0, fec:1 },          w:{ leg:2 } },
+      fav:{ leg:1, eye:1, tall:1, color:0, fur:0 },          w:{ leg:2 } },
     { key:'forest', name:'초록 숲·천적', emoji:'🐾', t:0.58, m:0.68, bg:'#2e7d4f', ink:'#eaffe9',
-      fav:{ color:1, eye:1, leg:1, arm:1, tall:0, fec:1 },          w:{ color:2, eye:1.5 } },
+      fav:{ color:1, eye:1, leg:1, arm:1, tall:0, ant:1 },   w:{ color:2, eye:1.5, ant:1.5 } },
     { key:'rock',   name:'바위산',       emoji:'🪨', t:0.48, m:0.38, bg:'#8a8f9a', ink:'#111',
-      fav:{ grip:1, leg:1, color:1, water:0, tox:1, life:1 },       w:{ grip:2 } },
+      fav:{ grip:1, leg:1, color:1, tox:1, life:1 },       w:{ grip:2 } },
     { key:'jungle', name:'높은 나무숲',  emoji:'🌴', t:0.80, m:0.80, bg:'#3a6b2f', ink:'#eaffe9',
-      fav:{ tall:1, arm:1, grip:1, eye:1, fur:0, fec:1 },           w:{ tall:2, arm:1.5 } },
+      fav:{ tall:1, arm:1, grip:1, eye:1, fur:0 },           w:{ tall:2, arm:1.5 } },
     { key:'desert', name:'더운 사막',    emoji:'🏜️', t:0.95, m:0.10, bg:'#e3c47e', ink:'#3a2600',
-      fav:{ water:1, fur:0, color:0, eye:0, leg:0, heat:1, fec:0 }, w:{ water:2, heat:1.5 } },
+      fav:{ fur:0, color:0, eye:0, leg:0, heat:1, ant:0 }, w:{ heat:1.5 } },
     /* 바다 — 아주 습한 쪽. 헤엄치지 못하면 못 산다 */
     { key:'sea',    name:'바다',         emoji:'🌊', t:0.55, m:1.28, bg:'#2f7fb5', ink:'#eaf6ff',
-      fav:{ fin:1, leg:0, tall:0, fur:0, grip:0, tox:1 },           w:{ fin:3, leg:1.5 } }
+      fav:{ fin:1, leg:0, tall:0, fur:0, grip:0, tox:1, ant:1 },    w:{ fin:3, leg:1.5 } }
   ];
 
   /* ══ 재해 ══════════════════════════════════════════════════════
@@ -92,13 +102,13 @@
      지형     = 사건이 끝난 뒤 그 칸이 무엇으로 바뀌는가 (null 이면 그대로) */
   var EVENTS = [
     { k:'volcano', n:'화산 폭발', emoji:'🌋', 범위:2, 기본생존:0.15,
-      살아남는:{ heat:1, tox:1, fur:0 }, w:{ heat:3, tox:1.5 }, 지형:'rock',
+      살아남는:{ heat:1, tox:1, fur:0, ant:1 }, w:{ heat:3, tox:1.5 }, 지형:'rock',
       말:'뜨거운 재가 하늘을 덮었습니다' },
     { k:'meteor',  n:'운석 충돌', emoji:'☄️', 범위:3, 기본생존:0.12,
       살아남는:{ tox:1, grip:1, tall:0 }, w:{ tox:2.5, tall:1.5 }, 지형:null,
       말:'하늘에서 돌이 떨어져 먼지가 뒤덮었습니다' },
     { k:'quake',   n:'지진',      emoji:'🌎', 범위:4, 기본생존:0.30,
-      살아남는:{ leg:1, tall:0, grip:1 }, w:{ leg:2.5 }, 지형:null,
+      살아남는:{ leg:1, tall:0, grip:1, ant:1 }, w:{ leg:2.5, ant:1.5 }, 지형:null,
       말:'땅이 흔들려 서 있기가 힘듭니다' },
     { k:'sink',    n:'대지 침강', emoji:'🌊', 범위:3, 기본생존:0.08,
       살아남는:{ fin:1, water:1 }, w:{ fin:4 }, 지형:'sea',
@@ -132,10 +142,15 @@
       /* 번식력 — 자손은 2마리 아니면 4마리.
          4마리가 나올 확률이 유전자형에 따라 다르다 (우열이 아니라 «쌓인다»)
            rr 10%  ·  Rr 20%  ·  RR 30% */
-      kid2:2, kid4:4, fec0:0.10, fec1:0.20, fec2:0.30,
+      /* 10/20/30 은 개체 하나로는 절대 체감이 안 됐다(rr 이 RR 이상 나올 확률 73%).
+         벌려 놓고, 대신 번식력을 «구역 유불리» 에서 빼서
+         «생존률엔 안 나오는데 자손이 유독 많다» 가 깨끗이 드러나게 했다 */
+      kid2:2, kid4:4, fec0:0.00, fec1:0.25, fec2:0.50,
 
       inbreed:1,       // 내 개체끼리 교배하면 자손이 이만큼 준다 (근친약세)
-      cellCap:14,      // 한 구역이 넉넉히 먹여 살리는 수
+      /* 14로 두었더니 «친구랑 한 칸에 뭉치기» 가 압도적으로 이득이었다.
+         (같은 칸 두 학생 → 자손 21.6마리 / 다른 칸 → 13.2마리, 1.6배) */
+      cellCap:10,      // 한 구역이 넉넉히 먹여 살리는 수
       crowd:0.015,     // 넘으면 한 마리당 깎이는 생존 확률
       rescue:2,        // 전멸한 학생에게 보내는 이주민
       mut:0.02,        // 유전자 하나가 돌연변이할 확률
@@ -144,7 +159,15 @@
       moveSec:120, breedSec:240,
       autoScope:'zone',
       shift:0.12,      // 환경이 한 번에 움직이는 폭
-      eventRate:0.45   // 세대마다 재해가 일어날 확률
+      eventRate:0.30,  // 세대마다 재해가 일어날 확률
+
+      /* ── DNA 크레딧 ──
+         수업 전 문제 점수만큼 선생님이 넣어 준다.
+         유전자를 고칠 때·입양할 때·거래할 때 쓴다.
+         상을 받으면 더 받는다 */
+      editCost:1,      // 유전자 한 자리 고치기
+      adoptCost:5,     // 외계인 한 마리 입양
+      awardDna:3       // 상 하나당 주는 DNA
     };
   }
 
@@ -187,9 +210,7 @@
         var k = 가까운바이옴(c/4+(env.dt||0), r/4+(env.dm||0)).key;
         if (terrain) {
           var o = terrain[r+','+c];
-          if (o === 'sea') k = 'sea';
-          else if (o === 'rise' && k === 'sea') k = 'rock';   // 융기 — 바다가 마른 땅으로
-          else if (o) k = o;
+          if (o) k = o;      // 재해로 굳어진 지형이 기후를 이긴다
         }
         g[r][c]=k;
       }
@@ -291,7 +312,10 @@
     var 후보=[], r, c;
     for (r=0;r<5;r++) for (c=0;c<5;c++)
       후보.push({ r:r, c:c, d:Math.max(Math.abs(r-cr), Math.abs(c-cc)) });
-    후보.sort(function (a,b) { return a.d - b.d; });
+    /* 거리가 같으면 무작위로 — 그냥 정렬하면 «항상 위·왼쪽» 만 맞는다.
+       실제로 재 보니 A2 가 E1 보다 5.5배 자주 맞았고, 맨 아랫줄이 안전지대가 됐다 */
+    후보.forEach(function (x) { x.j = Math.random(); });
+    후보.sort(function (a,b) { return (a.d - b.d) || (a.j - b.j); });
     var 칸들 = 후보.slice(0, ev.범위).map(function (x) { return { r:x.r, c:x.c }; });
 
     // 침강은 바다가 아닌 곳만, 융기는 바다인 곳만 뜻이 있다
@@ -312,9 +336,12 @@
 
     var 새terrain = {};
     for (var kk in (terrain||{})) 새terrain[kk] = terrain[kk];
+    /* 융기는 «바다 표시를 지우는» 것만으로는 부족하다.
+       기후 때문에 바다가 된 칸은 표시가 없어서 지울 것도 없기 때문이다.
+       그래서 «땅으로 굳힌다» 는 표시를 따로 남긴다 */
     if (ev.지형) for (i=0;i<칸들.length;i++) {
       var key = 칸들[i].r+','+칸들[i].c;
-      if (ev.지형 === 'rise') delete 새terrain[key];   // 바다 표시를 지운다 = 다시 땅
+      if (ev.지형 === 'rise') 새terrain[key] = 'rock';
       else 새terrain[key] = ev.지형;
     }
 
@@ -459,6 +486,15 @@
     return { n:n, f:f };
   }
 
+  /* 더듬이가 긴 개체를 하나라도 갖고 있으면 다음 재해 경보를 볼 수 있다 */
+  function 경보볼수있나(내개체들) {
+    for (var i=0;i<내개체들.length;i++) {
+      var a = 내개체들[i];
+      if (a.alive && 표현형(a.geno,'ant') === 1) return true;
+    }
+    return false;
+  }
+
   /* 구역별 유전자 풀 — 빔 화면이 쓴다 */
   function 구역빈도(aliens, r, c) {
     var 안=[];
@@ -478,6 +514,7 @@
     자손유전자:자손유전자, 자손수:자손수, 넷확률:넷확률, 몰림세기:몰림세기,
     변화목록:변화목록, 변화찾기:변화찾기, 무작위변화:무작위변화, 환경적용:환경적용,
     무작위재해:무작위재해, 재해찾기:재해찾기, 재해발생:재해발생, 재해생존확률:재해생존확률,
-    생존판정:생존판정, 자동교배:자동교배, 세대교체:세대교체, 빈도:빈도, 구역빈도:구역빈도
+    생존판정:생존판정, 자동교배:자동교배, 세대교체:세대교체, 빈도:빈도, 구역빈도:구역빈도,
+    경보볼수있나:경보볼수있나
   };
 })(window);

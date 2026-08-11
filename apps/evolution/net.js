@@ -193,6 +193,54 @@
         });
     },
 
+    /* 개체를 받는다 — 유전자는 서버가 무작위로 정한다.
+       처음부터 고르지 못하게 하려는 것이다. 고치려면 DNA 를 써야 한다 */
+    '개체받기': function (sid, home) {
+      return EVO.rpc('evo_start_aliens', {
+        p_player:+sid, p_token:EVO.token(), p_r:home.r, p_c:home.c
+      }).then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    '유전자고치기': function (sid, aid, pos, val) {
+      return EVO.rpc('evo_edit_gene', {
+        p_player:+sid, p_token:EVO.token(), p_alien:+aid, p_pos:pos, p_val:val
+      }).then(function (남은) { return { ok:true, dna:남은 }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    '입양': function (sid, cost) {
+      return EVO.rpc('evo_adopt', { p_player:+sid, p_token:EVO.token(), p_cost:cost })
+        .then(function (남은) { return { ok:true, dna:남은 }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    '거래신청': function (sid, mine, theirs, dna) {
+      return EVO.rpc('evo_trade_offer', {
+        p_player:+sid, p_token:EVO.token(), p_mine:+mine, p_theirs:+theirs, p_dna:dna|0
+      }).then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    '거래응답': function (sid, reqId, accept) {
+      return EVO.rpc('evo_trade_answer', {
+        p_player:+sid, p_token:EVO.token(), p_req:+reqId, p_accept:!!accept
+      }).then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    /* 선생님 — DNA 를 넣어 준다 */
+    'DNA설정': function (code, player, amount) {
+      return EVO.rpc('evo_set_dna', { p_code:code, p_player:+player, p_amount:amount|0 })
+        .then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+    'DNA지급': function (code, list) {
+      return EVO.rpc('evo_grant_dna', { p_code:code, p_game:EVO.gameId, p_list:list })
+        .then(function () { return { ok:true }; },
+              function (e) { return { ok:false, msg:e.message }; });
+    },
+
     '유전자제출': function (sid, genos, home) {
       return EVO.rpc('evo_submit_genes', {
         p_player:+sid, p_token:EVO.token(), p_genos:genos, p_r:home.r, p_c:home.c
@@ -365,6 +413,15 @@
     for (i=0;i<내것.length;i++)
       if (내것[i].alive && 내것[i].born === g.turn) 신생.push(내것[i].geno);
 
+    /* 더듬이가 긴 개체가 있으면 다음 재해 경보를 볼 수 있다.
+       보이는 형질에 «정보» 를 얹어 두면, 남의 외계인을 유심히 볼 이유가 생긴다. */
+    var 경보 = null;
+    if (st.nextEvent && R.경보볼수있나(내것)) {
+      var ev0 = R.재해찾기(st.nextEvent.k);
+      if (ev0) 경보 = { 이름:ev0.n, emoji:ev0.emoji,
+                        칸: String.fromCharCode(65+st.nextEvent.r) + (st.nextEvent.c+1) };
+    }
+
     var 짝수 = 0;
     for (i=0;i<내것.length;i++) if (내것[i].alive && 내것[i].bred) 짝수++;
 
@@ -382,19 +439,20 @@
       me:{ id:String(me.id), name:me.name,
            home: (me.home_r==null ? null : { r:me.home_r, c:me.home_c }),
            ready:!!me.ready,
+           /* 적응도도 생존 확률도 알려 주지 않는다.
+              학생은 «누가 죽고 누가 살았나» 만 보고 규칙을 알아내야 한다.
+              붐빔만은 눈에 보이는 사실이라(같은 칸 마릿수) 그대로 둔다. */
            aliens:내것.map(function (a) {
              var v = 화면용(a);
-             if (a.alive) {
-               // 지금 서 있는 칸에서의 값만. 다른 칸은 알려 주지 않는다
-               var 넘침 = Math.max(0, (몰림[a.r+','+a.c]||0) - st.cellCap);
-               v.fit = R.적응도(a.geno, board[a.r][a.c]);
-               v.sp  = Math.round(R.생존확률(a.geno, board[a.r][a.c], st, 넘침) * 100);
-               v.crowd = 넘침;
-             }
+             if (a.alive) v.crowd = Math.max(0, (몰림[a.r+','+a.c]||0) - st.cellCap);
              return v;
            }),
+           dna: me.dna || 0, dnaUsed: me.dna_used || 0,
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },
-      cells:cells, near:남, inbox:inbox, sent:sent
+      cells:cells, near:남, inbox:inbox, sent:sent, 경보:경보,
+      /* 재해가 학생 화면에 안 뜨면 «왜 죽었는지» 를 알 방법이 없다.
+         board.html 은 뒤에 앉은 학생에게 안 보인다 */
+      result: g.result
     };
   }
 
@@ -421,6 +479,7 @@
     for (i=0;i<판.players.length;i++)
       통[판.players[i].id] = { id:String(판.players[i].id), name:판.players[i].name,
         live:0, fit:0, _fit:0, biomes:0, _b:{}, cross:판.players[i].cross_n||0,
+        dna:판.players[i].dna||0, dnaUsed:판.players[i].dna_used||0,
         ready:!!판.players[i].ready,
         home:(판.players[i].home_r==null?null:{ r:판.players[i].home_r, c:판.players[i].home_c }) };
 
@@ -542,17 +601,28 @@
 
         /* 재해 — 세대마다 낮은 확률로 한 구역 일대를 덮친다.
            사건마다 살아남게 해 주는 형질이 다르다. 그것도 알려 주지 않는다. */
+        /* 지난 세대에 미리 뽑아 둔 재해가 있으면 그대로 일으킨다.
+           경보를 봤는데 다른 게 오면 경보가 거짓말이 된다. */
         var 재해 = null;
-        if (Math.random() < st.eventRate) 재해 = R.재해발생(board2, aliens, terrain, null, null);
+        if (st.nextEvent) {
+          재해 = R.재해발생(board2, aliens, terrain,
+                            R.재해찾기(st.nextEvent.k), { r:st.nextEvent.r, c:st.nextEvent.c });
+        }
+        /* 다음 세대 재해를 미리 뽑는다 (일어날지 말지도 여기서 정해진다) */
+        var 다음재해 = (Math.random() < st.eventRate)
+          ? { k: R.무작위재해().k, r: Math.floor(Math.random()*5), c: Math.floor(Math.random()*5) }
+          : null;
 
         var 예보 = R.무작위변화();
         patch.env_dt = env.dt; patch.env_dm = env.dm;
         patch.forecast = 예보.설명;
 
+        var st2 = {}; for (var kk in st) st2[kk] = st[kk];
+        st2.nextEvent = 다음재해;
+
         if (재해) {
           terrain = 재해.terrain;
           board2 = R.보드만들기(env, terrain);
-          var st2 = {}; for (var kk in st) st2[kk] = st[kk];
           st2.terrain = terrain;
           patch.settings = st2;
           patch.board = board2;
@@ -564,6 +634,7 @@
             .then(function () { return 밀기(code, patch); });
         }
 
+        patch.settings = st2;
         patch.board = board2;
         patch.result = { 단계:'환경 변화', 설명:변화.설명, env:env, 예보:예보.설명 };
         return 밀기(code, patch);
