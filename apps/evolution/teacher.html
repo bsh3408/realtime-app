@@ -1,0 +1,492 @@
+<!-- 외계 행성 진화 게임 — 선생님 진행판
+     realtime-app/apps/evolution/teacher.html 로 넣습니다.
+     이 화면이 «게임 엔진» 입니다. 생존 판정·세대 교체·환경 변화를
+     rules.js 로 계산해서 Supabase 에 올립니다. 수업 내내 켜 두세요. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+ :root{--bg:#0d1326;--panel:#161d34;--panel2:#101830;--line:#28324f;--ink:#eaf0ff;--sub:#9aa6cc;
+       --accent:#7cf0c8;--accent2:#ffd36b;--rec:#ff8fb0;--bad:#ff6b6b}
+ *{box-sizing:border-box}
+ body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#1c2748 0,transparent 60%),var(--bg);
+      color:var(--ink);font-family:system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.5}
+ .wrap{max-width:1240px;margin:0 auto;padding:12px 14px 40px}
+ h1{font-size:20px;margin:0}
+ .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+ .plabel{font-size:12px;color:var(--sub);margin:0 0 9px;letter-spacing:.02em}
+ button{font:inherit;cursor:pointer;border-radius:11px;border:1px solid var(--line);
+        background:var(--panel2);color:var(--ink);padding:10px 14px;font-size:13px;font-weight:700}
+ button:disabled{opacity:.35;cursor:not-allowed}
+ button.primary{background:var(--accent2);color:#3a2a00;border-color:var(--accent2);font-size:16px;padding:14px 22px}
+ button.go{background:var(--accent);color:#07271d;border-color:var(--accent)}
+ button.warn{background:var(--rec);color:#3a0018;border-color:var(--rec)}
+ button.sm{padding:7px 11px;font-size:12px;font-weight:600}
+ input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+      border-radius:9px;padding:9px;font-size:14px;outline:none;width:100%}
+
+ /* 머리띠 */
+ .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--panel);
+      border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:12px}
+ .top .gen{font-size:13px;color:var(--sub);font-weight:700}
+ .top .gen b{color:var(--accent2);font-size:26px;display:block;line-height:1.1}
+ .top .ph{font-size:13px;color:var(--sub);font-weight:700}
+ .top .ph b{color:var(--ink);font-size:22px;display:block;line-height:1.15}
+ .top .tm{font-family:ui-monospace,Menlo,monospace;font-size:34px;font-weight:800;color:var(--accent);min-width:110px}
+ .top .tm.hot{color:var(--bad)}
+ .top .sp{flex:1}
+
+ .cols{display:grid;grid-template-columns:1.25fr .95fr;gap:12px}
+ @media(max-width:960px){.cols{grid-template-columns:1fr}}
+
+ /* 보드 */
+ .board{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;background:#0c1224;
+        border:1px solid var(--line);border-radius:14px;padding:7px}
+ .cell{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;
+       box-shadow:inset 0 0 0 1px #ffffff14;padding:2px}
+ .cell .hd{display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:800;opacity:.9;
+           text-shadow:0 1px 2px #0007;padding:1px 3px}
+ .cell .hd .co{opacity:.6}
+ .cell .cnt{position:absolute;top:3px;right:4px;font-size:10px;font-weight:800;
+            background:#0009;border:1px solid #ffffff33;border-radius:6px;padding:0 5px;color:#fff}
+ .mini{display:flex;flex-wrap:wrap;gap:1px;padding:1px 2px;align-content:flex-start}
+ .mini span{width:15px;height:16px;display:inline-block;border-radius:3px;overflow:hidden;position:relative}
+ .mini img{width:100%;image-rendering:pixelated;display:block}
+ .mini i{position:absolute;inset:0;border-radius:3px;border:1.5px solid transparent}
+ .axis{color:var(--sub);font-size:11px;margin:0 2px 6px}
+
+ table{width:100%;border-collapse:collapse;font-size:12.5px}
+ th,td{border-bottom:1px solid var(--line);padding:6px 5px;text-align:left}
+ th{color:var(--sub);font-size:11px;font-weight:700}
+ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+ .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+ .res{border-radius:12px;padding:12px 14px;font-size:14px;border:1px solid var(--accent2);
+      background:rgba(255,211,107,.10)}
+ .res b{color:var(--accent2)}
+ .res .big{font-size:26px;font-weight:800;color:var(--accent2);line-height:1.2}
+
+ .sparks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ .sp1{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px}
+ .sp1 .t{font-size:11px;color:var(--sub);font-weight:700;display:flex;justify-content:space-between}
+ .sp1 .t b{color:var(--accent2);font-family:ui-monospace,monospace}
+ .sp1 svg{display:block;width:100%;height:38px;margin-top:3px}
+
+ .favtb{font-size:12px}
+ .favtb .row{display:flex;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);align-items:center}
+ .favtb .row:last-child{border-bottom:0}
+ .favtb .bn{width:104px;flex:none;font-weight:700}
+ .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+      padding:1px 6px;margin:1px 3px 0 0;font-size:11px}
+ .tag.good{border-color:var(--accent);color:var(--accent)}
+ .log{background:#0b0f1c;border-radius:10px;padding:9px 11px;font-size:12px;max-height:150px;
+      overflow-y:auto;color:var(--sub);line-height:1.75}
+ .log b{color:var(--accent2)}
+ .hide{display:none}
+ .msg{border-radius:10px;padding:9px 11px;font-size:12.5px;margin-top:9px;border:1px solid var(--line);color:var(--sub)}
+ details summary{cursor:pointer;font-size:13px;color:var(--sub);font-weight:700;padding:4px 0}
+ .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+ label.f{display:block;font-size:11px;color:var(--sub);margin-bottom:3px}
+</style>
+
+<div class="wrap">
+
+<!-- 잠금 -->
+<section id="gate">
+  <div class="panel" style="max-width:420px;margin:60px auto">
+    <h1>선생님 진행판</h1>
+    <p class="plabel" style="margin-top:6px">코드를 넣어 주세요.</p>
+    <input type="text" id="codeIn" placeholder="코드">
+    <div style="margin-top:9px"><button class="primary" id="codeBtn" style="width:100%">열기</button></div>
+    <div id="gateMsg"></div>
+  </div>
+</section>
+
+<section id="main" class="hide">
+
+  <div class="top">
+    <div class="gen">세대<b id="tGen">0</b></div>
+    <div class="ph">지금 단계<b id="tPhase">—</b></div>
+    <div class="tm" id="tTime"></div>
+    <div class="sp"></div>
+    <button class="sm" id="btnExtend">＋1분</button>
+    <button class="primary" id="btnNext">다음 단계 ▶</button>
+  </div>
+
+  <div id="resBox"></div>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <div class="plabel">행성 — 왼→오른 더움 · 위→아래 습함 &nbsp;|&nbsp; 칸 안의 작은 그림이 개체입니다</div>
+        <div class="board" id="board"></div>
+        <div class="msg" id="envMsg"></div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">세대별 형질 — 우성 겉모습을 가진 개체의 비율(%)</div>
+        <div class="sparks" id="sparks"></div>
+        <div class="msg">선이 올라가는 형질 = 지금 환경이 <b style="color:var(--accent)">고르고 있는</b> 형질입니다.
+          환경을 바꾸면 방향이 꺾이는 것을 보여 주세요.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="plabel">단계 바로 가기</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="sm" data-go="setup">유전자 제작</button>
+          <button class="sm" data-go="survive">생존 판정</button>
+          <button class="sm" data-go="move">이동</button>
+          <button class="sm" data-go="breed">교배</button>
+          <button class="sm" data-go="next">세대 교체</button>
+          <button class="sm" data-go="env">환경 변화</button>
+        </div>
+        <div class="plabel" style="margin:12px 0 6px">환경을 직접 고르기</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="sm" data-env="warm">🔥 온난화</button>
+          <button class="sm" data-env="cold">❄️ 한랭화</button>
+          <button class="sm" data-env="wet">💧 습윤화</button>
+          <button class="sm" data-env="dry">🏜️ 건조화</button>
+          <button class="sm" data-env="keep">— 변화 없음</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">이번 세대의 상 — 개체 수만으로 겨루면 «적응도 몰빵» 이 정답이 됩니다.
+          축을 여러 개 두면 서로 다른 전략이 살아납니다.</div>
+        <div id="awards"></div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">학생 <span id="stCount" style="color:var(--accent2);font-weight:800"></span>
+          · 전체 개체 <span id="alCount" style="color:var(--accent2);font-weight:800"></span>
+          · 대기 신청 <span id="reqCount" style="color:var(--rec);font-weight:800"></span></div>
+        <div style="max-height:260px;overflow:auto"><table id="stTable"></table></div>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary>구역별 유리한 형질 (학생에게 보여 줄 표)</summary>
+          <div class="favtb" id="favtb" style="margin-top:8px"></div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary>진행 기록</summary>
+          <div class="log" id="log" style="margin-top:8px"></div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary>설정 · 초기화</summary>
+          <div class="grid2" style="margin-top:10px">
+            <div><label class="f">이동 시간(초) 0=무제한</label><input type="number" id="cfgMove"></div>
+            <div><label class="f">교배 시간(초) 0=무제한</label><input type="number" id="cfgBreed"></div>
+            <div><label class="f">돌연변이율 (0~1)</label><input type="number" id="cfgMut" step="0.01"></div>
+            <div><label class="f">교배 1회당 자손 수</label><input type="number" id="cfgKids"></div>
+            <div><label class="f">개체 수 상한</label><input type="number" id="cfgCap"></div>
+            <div><label class="f">시작 개체 수</label><input type="number" id="cfgStart"></div>
+            <div><label class="f">수명 대가(생존 확률에서 뺌)</label><input type="number" id="cfgLifeCost" step="0.01"></div>
+            <div><label class="f">수명이 더 사는 세대</label><input type="number" id="cfgLifeExtra"></div>
+          </div>
+          <div style="margin-top:8px">
+            <label class="f">시간 초과 자동 교배 범위</label>
+            <div style="display:flex;gap:6px">
+              <button class="sm" data-scope="zone">같은 구역만</button>
+              <button class="sm" data-scope="near">인접 구역까지</button>
+              <span id="scopeNow" style="align-self:center;font-size:12px;color:var(--accent2);font-weight:700"></span>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:7px;flex-wrap:wrap">
+            <button class="go sm" id="btnSave">설정 저장</button>
+            <button class="warn sm" id="btnResetSoft">개체만 비우기</button>
+            <button class="warn sm" id="btnResetHard">학생까지 전부 지우기</button>
+          </div>
+          <div id="cfgMsg"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="../../shared/config.js"></script>
+<script src="rules.js"></script>
+<script src="net.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+/* RUN() 과 OFFLINE 은 net.js 가 올려 준다. 단계 계산도 거기서 rules.js 를 쓴다 */
+
+let CODE = new URLSearchParams(location.search).get('k') || localStorage.getItem('evoCode') || '';
+let GENES=[], BIOMES=[], BIOME={}, T=null;
+const biome = k => BIOME[k]||BIOMES[0];
+const CO=(r,c)=>String.fromCharCode(65+r)+(c+1);
+
+/* ── 픽셀 렌더러 (학생 화면과 같은 규칙) ── */
+const W=120,H=128;
+const DARK={lite:'#4fa87c',mid:'#2f8055',dark:'#1c5738'};
+const LIGHT={lite:'#fff4dc',mid:'#ecd6a4',dark:'#c4a970'};
+const OUT='#12203a',FUR='#fbfff2',WHITE='#fff',PUP='#101a30';
+let buf,solid; const ix=(x,y)=>y*W+x;
+function rst(){buf=new Array(W*H).fill(null);solid=new Array(W*H).fill(false);}
+function px(x,y,c,m){x|=0;y|=0;if(x<0||y<0||x>=W||y>=H)return;buf[ix(x,y)]=c;if(m)solid[ix(x,y)]=true;}
+function isS(x,y){return x>=0&&y>=0&&x<W&&y<H&&solid[ix(x,y)];}
+function fEl(cx,cy,rx,ry,c,m){for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1)px(cx+x,cy+y,c,m);}
+function shEl(cx,cy,rx,ry,c){for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1&&isS(cx+x,cy+y))buf[ix(cx+x,cy+y)]=c;}
+function outline(){const a=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(solid[ix(x,y)])continue;
+  if(isS(x-1,y)||isS(x+1,y)||isS(x,y-1)||isS(x,y+1)||isS(x-1,y-1)||isS(x+1,y-1)||isS(x-1,y+1)||isS(x+1,y+1))a.push([x,y]);}
+  a.forEach(([x,y])=>buf[ix(x,y)]=OUT);}
+function buildPix(ph){
+  const P=i=>ph.charAt(i)==='1';
+  rst(); const sk=P(1)?DARK:LIGHT, cx=60, bottom=112;
+  const bodyRy=P(4)?36:25, bodyRx=30, bodyCy=bottom-bodyRy;
+  if(P(0)){const N=22;for(let i=0;i<N;i++){const a=-Math.PI/2+i/(N-1)*Math.PI*2*0.92;
+    fEl((cx+Math.cos(a)*(bodyRx-1))|0,(bodyCy+Math.sin(a)*(bodyRy-1))|0,7,7,FUR,true);}}
+  const legN=P(3)?6:2, spread=bodyRx*1.5;
+  for(let i=0;i<legN;i++){const fx=(cx-spread/2+spread*i/(legN-1))|0;
+    for(let y=0;y<9;y++)for(let x=-3;x<=3;x++)px(fx+x,bottom-3+y,sk.mid,true);
+    const fw=P(6)?6:3;fEl(fx,bottom+6,fw,3,sk.dark,true);
+    if(P(6))for(let k=-1;k<=1;k++)px(fx+k*fw,bottom+9,OUT,true);}
+  if(P(7)){for(let k=-1;k<=1;k+=2){const ax=cx+k*(bodyRx-2);
+    for(let t=0;t<10;t++)px((ax+k*t*0.5)|0,(bodyCy+4+t*0.6)|0,sk.mid,true);
+    fEl((ax+k*5)|0,(bodyCy+11)|0,3,3,sk.mid,true);}}
+  fEl(cx,bodyCy,bodyRx,bodyRy,sk.mid,true);
+  shEl(cx,(bodyCy+bodyRy*0.55)|0,(bodyRx*0.9)|0,(bodyRy*0.4)|0,sk.dark);
+  if(P(5))fEl(cx,(bodyCy+bodyRy*0.42)|0,16,13,sk.lite,true);
+  outline();
+  const eR=P(2)?10:5, ey=(bodyCy-bodyRy*0.08)|0, es=Math.min(2*eR*2.1,bodyRx*1.6);
+  for(let i=0;i<2;i++){const ex=(cx-es/2+es*i)|0;
+    fEl(ex,ey,eR+1,eR+2,OUT,false);fEl(ex,ey,eR,eR+1,WHITE,false);
+    fEl(ex,(ey+eR*0.35)|0,(eR*0.62)|0,(eR*0.72)|0,PUP,false);px((ex-eR*0.3)|0,(ey-eR*0.2)|0,WHITE,false);}
+  {const my=(ey+eR+4)|0;for(let x=-3;x<=3;x++)px(cx+x,my+(Math.abs(x)===3?-1:0),OUT,false);}
+  const at=(bodyCy-bodyRy)|0, aL=P(8)?17:9;
+  for(let k=-1;k<=1;k+=2){const bx=cx+k*10;
+    for(let t=0;t<aL;t++)px((bx+k*t*0.4)|0,at-t,OUT,false);
+    fEl((bx+k*(aL*0.4))|0,at-aL-2,3,3,sk.mid,false);}
+}
+const off=document.createElement('canvas'); off.width=W; off.height=H;
+const octx=off.getContext('2d'); const cache={};
+function sprite(ph){
+  if(cache[ph])return cache[ph];
+  buildPix(ph); octx.clearRect(0,0,W,H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=buf[ix(x,y)];if(c){octx.fillStyle=c;octx.fillRect(x,y,1,1);}}
+  return cache[ph]=off.toDataURL();
+}
+
+/* 학생마다 색 하나 */
+const hues={};
+// 47도씩 돌리면 0번과 8번 학생이 16도밖에 안 벌어져 20명이면 구분이 안 된다.
+// 황금각(137.5도)으로 돌리면 몇 명이든 고르게 벌어진다.
+function hueOf(sid, idx){ if(hues[sid]==null) hues[sid]=(idx*137.508)%360; return hues[sid]; }
+function colorOf(sid){ return 'hsl('+(hues[sid]||0)+',85%,62%)'; }
+
+/* ── 잠금 ── */
+$('#codeBtn').onclick=()=>{ CODE=$('#codeIn').value.trim(); localStorage.setItem('evoCode',CODE); start(); };
+if(CODE) start(); else if(OFFLINE)
+  $('#gateMsg').innerHTML='<div class="msg">서버 설정을 찾지 못했습니다. 배포한 <b>주소</b>로 들어가야 합니다.</div>';
+
+async function start(){
+  GENES = RULES.GENES;
+  BIOMES = RULES.BIOMES;
+  BIOMES.forEach(b => BIOME[b.key] = b);
+  const r=await RUN('교사판',CODE).catch(()=>null);
+  if(!r||!r.ok){ $('#gateMsg').innerHTML='<div class="msg">코드가 다릅니다.</div>'; return; }
+  $('#gate').classList.add('hide'); $('#main').classList.remove('hide');
+  buildFav();
+  T=r; paint(); fillCfg();
+  setInterval(poll, 3000);
+  setInterval(()=>{ if(T&&T.endAt) paintTimer(); }, 1000);
+}
+
+let busy=false;
+async function poll(){
+  if(busy) return; busy=true;
+  try{ const r=await RUN('교사판',CODE); if(r&&r.ok){ T=r; tRef=Date.now(); paint(); } }catch(e){}
+  finally{ busy=false; }
+}
+
+/* ── 그리기 ── */
+function paint(){
+  $('#tGen').textContent=T.turn;
+  $('#tPhase').textContent=T.phaseName||'—';
+  paintTimer();
+  paintBoard(); paintResult(); paintStudents(); paintSparks(); paintLog();
+  $('#stCount').textContent=(T.학생별||[]).length+'명';
+  $('#alCount').textContent=T.총개체+'마리';
+  $('#reqCount').textContent=T.대기신청+'건';
+  $('#scopeNow').textContent = T.settings.autoScope==='zone'?'지금 : 같은 구역만':'지금 : 인접까지';
+  const e=T.env||{dt:0,dm:0};
+  $('#envMsg').innerHTML='기후 이동 — 온도 <b style="color:var(--accent2)">'+(e.dt>0?'+':'')+e.dt.toFixed(2)
+    +'</b> · 습도 <b style="color:var(--accent2)">'+(e.dm>0?'+':'')+e.dm.toFixed(2)+'</b>'
+    +' &nbsp;(0이 처음 상태입니다)'
+    +(T.forecast?'<br>📡 <b style="color:var(--accent2)">다음 세대 예보 — '+T.forecast+'</b>'
+      +' <span style="color:var(--sub)">학생 화면에도 보입니다</span>':'');
+  paintAwards();
+}
+
+function paintAwards(){
+  const L=(T.학생별||[]).filter(s=>s.live>0);
+  if(!L.length){ $('#awards').innerHTML='<div class="msg">아직 개체가 없습니다.</div>'; return; }
+  const 최고=(key)=>L.slice().sort((a,b)=>b[key]-a[key])[0];
+  const 상=[
+    ['번성상','개체 수가 가장 많은 사람','live','마리'],
+    ['적응상','평균 적응도가 가장 높은 사람','fit','점'],
+    ['개척상','가장 여러 지형에 퍼진 사람','biomes','곳'],
+    ['교류상','다른 사람과 가장 많이 교배한 사람','cross','번']
+  ];
+  $('#awards').innerHTML='<table><tr><th>상</th><th>받는 사람</th><th class="n">기록</th></tr>'
+    +상.map(([n,d,k,u])=>{
+      const w=최고(k);
+      return '<tr><td><b style="color:var(--accent2)">'+n+'</b><br>'
+        +'<span style="color:var(--sub);font-size:11px">'+d+'</span></td>'
+        +'<td><span class="dot" style="background:'+colorOf(w.id)+'"></span>'+w.name+'</td>'
+        +'<td class="n">'+w[k]+u+'</td></tr>';
+    }).join('')+'</table>';
+}
+let tRef=Date.now();
+function paintTimer(){
+  const el=$('#tTime');
+  if(!T||!T.endAt){ el.textContent=''; return; }
+  const left=Math.max(0, Math.round((T.endAt-T.now)/1000) - Math.round((Date.now()-tRef)/1000));
+  el.textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  el.classList.toggle('hot', left<=30);
+}
+
+let boardSig='';
+function paintBoard(){
+  (T.학생별||[]).forEach((s,i)=>hueOf(s.id,i));
+  // 3초마다 700개 그림을 다시 만들면 빔 연결한 노트북이 깜빡인다
+  const sig=JSON.stringify([T.board, T.cells.map(c=>c.list.map(a=>a.sid+a.ph+a.bred))]);
+  if(sig===boardSig) return;
+  boardSig=sig;
+  const bd=$('#board'); bd.innerHTML='';
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    const b=biome(T.board[r][c]), cell=T.cells[r*5+c];
+    const el=document.createElement('div'); el.className='cell';
+    el.style.background=b.bg; el.style.color=b.ink;
+    let h='<div class="hd"><span class="co">'+CO(r,c)+'</span><span>'+b.emoji+'</span><span>'+b.name+'</span></div>';
+    if(cell.list.length) h+='<div class="cnt">'+cell.list.length+'</div>';
+    h+='<div class="mini">'+cell.list.slice(0,28).map(a=>
+        '<span><img src="'+sprite(a.ph)+'"><i style="box-shadow:inset 0 0 0 1.5px '+colorOf(a.sid)+'"></i></span>').join('')+'</div>';
+    el.innerHTML=h;
+    bd.appendChild(el);
+  }
+}
+
+function paintResult(){
+  const R=T.result, box=$('#resBox');
+  if(!R){ box.innerHTML=''; return; }
+  let h='';
+  if(R.단계==='생존 판정'){
+    h='<div class="res"><span class="big">'+R.살아남음+'마리 생존 · '+R.죽음+'마리 사망</span><br>'
+     +'적응도가 높을수록 살아남을 확률이 높습니다. 누가 어디에 있었는지 물어보세요.'
+     +(R.붐빈수>R.넉넉한수 ? '<br><span style="color:var(--rec)">가장 붐빈 칸에 '+R.붐빈수
+        +'마리 — 넉넉한 수('+R.넉넉한수+')를 넘어 그 칸 전체가 손해를 봤습니다</span>':'')+'</div>';
+  }else if(R.단계==='세대 교체'){
+    h='<div class="res"><span class="big">'+R.세대+'세대</span><br>'
+     +'자손 <b>'+R.자손+'</b>마리 태어남 · 어버이 <b>'+R.사망+'</b>마리 사망 · 수명으로 더 산 개체 <b>'+R.장수생존+'</b>마리'
+     +(R.자동교배 ? '<br><span style="color:var(--sub)">시간 초과 자동 교배 — 성사 '+R.자동교배.성사
+        +'쌍, 상대를 못 찾아 자손을 못 남긴 개체 '+R.자동교배.실패+'마리</span>':'')
+     +(R.구제 ? '<br><span style="color:var(--rec)">전멸한 학생 '+R.구제+'명에게 이주민을 보냈습니다</span>':'')+'</div>';
+  }else if(R.단계==='환경 변화'){
+    h='<div class="res"><span class="big">'+R.설명+'</span><br>'
+     +'어제 유리하던 형질이 오늘은 불리할 수 있습니다. 학생들에게 적응도를 다시 보라고 하세요.</div>';
+  }
+  box.innerHTML=h;
+}
+
+function paintStudents(){
+  const rows=(T.학생별||[]).map(s=>
+    '<tr><td><span class="dot" style="background:'+colorOf(s.id)+'"></span>'+s.name+'</td>'
+    +'<td class="n"'+(s.live?'':' style="color:var(--bad);font-weight:800"')+'>'+s.live+'</td>'
+    +'<td class="n">'+(s.fit||0)+'</td><td class="n">'+(s.biomes||0)+'</td><td class="n">'+(s.cross||0)+'</td>'
+    +'<td class="n" style="color:'+(s.ready?'var(--accent)':'var(--sub)')+'">'+(s.ready?'준비':'대기')+'</td></tr>').join('');
+  $('#stTable').innerHTML='<tr><th>학생</th><th class="n">개체</th><th class="n">적응</th>'
+    +'<th class="n">지형</th><th class="n">교류</th><th class="n">상태</th></tr>'+rows;
+}
+
+function paintSparks(){
+  const rows=T.hist||[];
+  $('#sparks').innerHTML=GENES.map(G=>{
+    const vals=rows.map(r=>r.f[G.k]);
+    const last=vals.length?vals[vals.length-1]:0;
+    let path='';
+    if(vals.length>1){
+      path=vals.map((v,i)=>{
+        const x=i/(vals.length-1)*96+2, y=34-(v/100)*30;
+        return (i?'L':'M')+x.toFixed(1)+','+y.toFixed(1);
+      }).join(' ');
+    }
+    return '<div class="sp1"><div class="t"><span>'+G.n+' · '+G.d+'</span><b>'+last+'%</b></div>'
+      +'<svg viewBox="0 0 100 38" preserveAspectRatio="none">'
+      +'<line x1="0" y1="19" x2="100" y2="19" stroke="#28324f" stroke-width="1"/>'
+      +(path?'<path d="'+path+'" fill="none" stroke="#7cf0c8" stroke-width="2" vector-effect="non-scaling-stroke"/>':'')
+      +'</svg></div>';
+  }).join('');
+}
+
+function paintLog(){
+  $('#log').innerHTML=(T.log||[]).map(l=>'<div><b>'+l.turn+'세대</b> · '+l.m+'</div>').join('') || '기록이 없습니다.';
+}
+
+function buildFav(){
+  $('#favtb').innerHTML=BIOMES.map(b=>{
+    const tags=Object.keys(b.fav).map(k=>{
+      const G=GENES.find(g=>g.k===k);
+      return '<span class="tag good">'+G.n+' : '+(b.fav[k]?G.d:G.r)+'</span>';
+    }).join('');
+    return '<div class="row"><div class="bn">'+b.emoji+' '+b.name+'</div><div>'+tags+'</div></div>';
+  }).join('');
+}
+
+/* ── 조작 ── */
+$('#btnNext').onclick=async ()=>{
+  $('#btnNext').disabled=true;
+  try{ const r=await RUN('단계진행',CODE); if(!r.ok) alert(r.msg); await poll(); }
+  catch(e){ alert('연결이 안 됩니다.'); }
+  finally{ $('#btnNext').disabled=false; }
+};
+$('#btnExtend').onclick=async ()=>{ try{ await RUN('시간연장',CODE,60); tRef=Date.now(); await poll(); }catch(e){} };
+$$('button[data-go]').forEach(b=>b.onclick=async ()=>{
+  if(!confirm(b.textContent+' 단계로 갑니다. 계속할까요?')) return;
+  try{ const r=await RUN('단계지정',CODE,b.dataset.go); if(!r.ok) alert(r.msg); tRef=Date.now(); await poll(); }catch(e){}
+});
+$$('button[data-env]').forEach(b=>b.onclick=async ()=>{
+  try{ const r=await RUN('환경지정',CODE,b.dataset.env); if(!r.ok) alert(r.msg); await poll(); }catch(e){}
+});
+$$('button[data-scope]').forEach(b=>b.onclick=async ()=>{
+  try{ await RUN('설정변경',CODE,{autoScope:b.dataset.scope}); await poll(); }catch(e){}
+});
+
+function fillCfg(){
+  const s=T.settings;
+  $('#cfgMove').value=s.moveSec; $('#cfgBreed').value=s.breedSec;
+  $('#cfgMut').value=s.mut; $('#cfgKids').value=s.kids;
+  $('#cfgCap').value=s.cap; $('#cfgStart').value=s.start;
+  $('#cfgLifeCost').value=s.lifeCost; $('#cfgLifeExtra').value=s.lifeExtra;
+}
+$('#btnSave').onclick=async ()=>{
+  const patch={
+    moveSec:+$('#cfgMove').value, breedSec:+$('#cfgBreed').value,
+    mut:+$('#cfgMut').value, kids:+$('#cfgKids').value,
+    cap:+$('#cfgCap').value, start:+$('#cfgStart').value,
+    lifeCost:+$('#cfgLifeCost').value, lifeExtra:+$('#cfgLifeExtra').value
+  };
+  try{ const r=await RUN('설정변경',CODE,patch);
+    $('#cfgMsg').innerHTML='<div class="msg">'+(r.ok?'저장했습니다.':r.msg)+'</div>'; await poll(); }
+  catch(e){}
+};
+$('#btnResetSoft').onclick=async ()=>{
+  if(!confirm('개체와 세대를 모두 비웁니다. 학생 이름은 남습니다. 계속할까요?')) return;
+  try{ await RUN('게임초기화',CODE,false); await poll(); }catch(e){}
+};
+$('#btnResetHard').onclick=async ()=>{
+  if(!confirm('학생 명단까지 전부 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+  try{ await RUN('게임초기화',CODE,true); await poll(); }catch(e){}
+};
+</script>

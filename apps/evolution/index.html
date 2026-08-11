@@ -1,0 +1,796 @@
+<!-- 외계 행성 진화 게임 — 학생 화면
+     realtime-app/apps/evolution/index.html 로 넣습니다.
+     파일 이름은 반드시 영문. 한글 이름은 GitHub Pages 주소에서 404 가 납니다. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+ :root{--bg:#0d1326;--panel:#161d34;--panel2:#101830;--line:#28324f;--ink:#eaf0ff;--sub:#9aa6cc;
+       --accent:#7cf0c8;--accent2:#ffd36b;--rec:#ff8fb0;--bad:#ff6b6b}
+ *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+ body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#1c2748 0,transparent 60%),var(--bg);
+      color:var(--ink);font-family:system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+      padding-bottom:40px;line-height:1.55}
+ .wrap{max-width:560px;margin:0 auto;padding:12px 12px 30px}
+ h1{font-size:17px;margin:4px 2px 2px}
+ .cap{color:var(--sub);font-size:12px;margin:0 2px 10px;line-height:1.5}
+ .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+ .plabel{font-size:12px;color:var(--sub);margin:0 0 8px}
+ button{font:inherit;cursor:pointer;border-radius:11px;border:1px solid var(--line);
+        background:var(--panel2);color:var(--ink);padding:10px;font-size:13px;font-weight:600}
+ button:disabled{opacity:.35;cursor:not-allowed}
+ button.primary{background:var(--accent2);color:#3a2a00;border-color:var(--accent2)}
+ button.go{background:var(--accent);color:#07271d;border-color:var(--accent)}
+ button.warn{background:var(--rec);color:#3a0018;border-color:var(--rec)}
+ .row{display:flex;gap:7px}
+ .row>*{flex:1}
+ input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+      border-radius:11px;padding:12px;font-size:16px;outline:none}
+ input[type=text]:focus{border-color:var(--accent)}
+
+ /* ── 머리띠 ── */
+ header{position:sticky;top:0;z-index:40;background:#0d1326ee;backdrop-filter:blur(8px);
+        border-bottom:1px solid var(--line);padding:8px 12px}
+ header .in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:8px}
+ header .gen{font-size:12px;color:var(--sub);font-weight:700}
+ header .gen b{color:var(--accent2);font-size:15px}
+ header .ph{flex:1;font-size:14px;font-weight:800;letter-spacing:-.02em}
+ header .tm{font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:800;color:var(--accent)}
+ header .tm.hot{color:var(--bad)}
+
+ /* ── 보드 ── */
+ .board{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:#0c1224;
+        border:1px solid var(--line);border-radius:14px;padding:6px}
+ .cell{position:relative;aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;
+       align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff14;cursor:pointer}
+ .cell .em{font-size:16px;line-height:1}
+ .cell .nm{font-size:8px;font-weight:700;opacity:.85;text-shadow:0 1px 2px #0007;margin-top:1px}
+ .cell .co{position:absolute;top:2px;left:3px;font-size:7.5px;opacity:.5}
+ .cell .cnt{position:absolute;bottom:2px;right:3px;font-size:9px;font-weight:800;
+            background:#0009;border:1px solid #ffffff33;border-radius:6px;padding:0 4px;color:#fff}
+ .cell .mine{position:absolute;bottom:2px;left:3px;font-size:9px;font-weight:800;
+             background:var(--accent);color:#07271d;border-radius:6px;padding:0 4px}
+ .cell.reach{box-shadow:inset 0 0 0 3px var(--accent),0 0 10px #7cf0c880}
+ .cell.mate{box-shadow:inset 0 0 0 3px var(--rec),0 0 10px #ff8fb080}
+ .cell.here{box-shadow:inset 0 0 0 3px var(--accent2),0 0 12px #ffd36b99}
+ .cell.dim{opacity:.35}
+ .axis{color:var(--sub);font-size:10.5px;margin:0 2px 5px}
+
+ /* ── 개체 띠 ── */
+ .strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 6px;-webkit-overflow-scrolling:touch}
+ .tile{flex:none;width:62px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);
+       padding:3px;text-align:center;cursor:pointer;position:relative}
+ .tile.on{border-color:var(--accent2);box-shadow:0 0 0 2px #ffd36b55}
+ .tile.dead{opacity:.3;filter:grayscale(1)}
+ .tile img{width:100%;display:block;image-rendering:pixelated}
+ .tile .lb{font-size:9px;color:var(--sub);margin-top:1px;font-family:ui-monospace,monospace}
+ .tile .bd{position:absolute;top:2px;right:2px;font-size:9px;background:var(--rec);color:#3a0018;
+           border-radius:5px;padding:0 3px;font-weight:800}
+ .tile .cell-at{position:absolute;top:2px;left:2px;font-size:8px;background:#0009;border-radius:5px;
+           padding:0 3px;color:#fff;font-weight:700}
+
+ /* ── 유전자 편집 ── */
+ .grow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #202741}
+ .grow:last-child{border-bottom:0}
+ .gname{width:66px;font-size:12px;flex:none}
+ .gname small{display:block;color:var(--sub);font-size:9px;font-family:ui-monospace,monospace}
+ .seg{display:flex;gap:5px;flex:1}
+ .seg button{flex:1;padding:5px 2px;font-size:11px;line-height:1.2;color:var(--sub);font-weight:600}
+ .seg button b{display:block;font-family:ui-monospace,monospace;font-size:12px;color:var(--ink)}
+ .seg button small{display:block;font-size:9px;color:var(--sub)}
+ .seg button.on{background:var(--accent);border-color:var(--accent)}
+ .seg button.on b,.seg button.on small{color:#07271d}
+ .seg button.rec.on{background:var(--rec);border-color:var(--rec)}
+ .seg button.rec.on b,.seg button.rec.on small{color:#3a0018}
+
+ .prev{position:relative;width:104px;height:112px;flex:none;border:1px solid var(--line);
+       border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#243056,#0c1224)}
+ .prev img{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:86px;image-rendering:pixelated}
+
+ .kv{font-size:12px;color:var(--sub);line-height:1.7}
+ .kv b{color:var(--ink)}
+ .mono{font-family:ui-monospace,Menlo,monospace}
+ .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+      padding:1px 6px;margin:2px 3px 0 0;font-size:11px}
+ .tag.good{border-color:var(--accent);color:var(--accent)}
+ .tag.bad{border-color:var(--rec);color:var(--rec)}
+ .msg{border-radius:10px;padding:9px 11px;font-size:12.5px;margin-top:9px;border:1px solid}
+ .msg.g{background:#12301f;border-color:#2f6;color:#d8ffe8}
+ .msg.r{background:#301218;border-color:var(--rec);color:#ffdfe8}
+ .msg.i{background:#101830;border-color:var(--line);color:var(--sub)}
+ .fit{font-family:ui-monospace,monospace;font-weight:800}
+ .bar{height:7px;background:#0c1224;border-radius:5px;overflow:hidden;margin-top:4px}
+ .bar>i{display:block;height:100%;background:var(--accent)}
+ .req{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #202741}
+ .req:last-child{border-bottom:0}
+ .req .t{flex:1;font-size:12.5px}
+ .req button{padding:7px 10px;font-size:12px;flex:none}
+ .badge{background:var(--rec);color:#3a0018;border-radius:9px;padding:1px 7px;font-size:11px;font-weight:800}
+ .fc{background:#2a1f00;border:1px solid var(--accent2);color:var(--accent2);border-radius:9px;
+     padding:7px 10px;font-size:12px;margin-top:9px}
+ .hide{display:none}
+ .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:18px;line-height:1.7}
+</style>
+
+<header><div class="in">
+  <span class="gen">세대 <b id="hGen">0</b></span>
+  <span class="ph" id="hPhase">연결 중…</span>
+  <span class="badge hide" id="hBadge"></span>
+  <span class="tm" id="hTime"></span>
+</div></header>
+
+<div class="wrap">
+
+<!-- ═══ 참가 ═══ -->
+<section id="join">
+  <h1>외계 행성 진화 게임</h1>
+  <p class="cap">이름을 넣고 참가하세요. 나중에 같은 이름으로 다시 들어오면 이어서 합니다.</p>
+  <div class="panel">
+    <input type="text" id="nameIn" placeholder="이름" maxlength="12" autocomplete="off">
+    <div class="row" style="margin-top:9px"><button class="primary" id="joinBtn">참가하기</button></div>
+    <div id="joinMsg"></div>
+  </div>
+</section>
+
+<!-- ═══ 유전자 제작 ═══ -->
+<section id="setup" class="hide">
+  <h1>내 외계인 만들기</h1>
+  <p class="cap">개체 <b id="stN">10</b>마리를 저마다 다른 유전자로 만듭니다.
+     <b style="color:var(--accent2)">잡종(Ff)도 겉모습은 우성</b>입니다 — 숨은 열성은 교배해 봐야 드러납니다.</p>
+
+  <div class="panel">
+    <div class="plabel">① 시작 구역을 고르세요 — 내 개체들이 <b>그 일대</b>에 퍼져서 시작합니다</div>
+    <div class="axis">↑건조 · ↓습함 &nbsp;|&nbsp; ←추움 · 더움→</div>
+    <div class="board" id="setupBoard"></div>
+    <div id="homeInfo" class="msg i">구역을 누르면 그곳에서 유리한 형질이 나옵니다.</div>
+  </div>
+
+  <div class="panel">
+    <div class="plabel">② 개체를 눌러 유전자를 정하세요 —
+      <b style="color:var(--accent2)">★ 표시는 잡종일 때만 유리한 형질</b>입니다.
+      열 마리는 <b>서로 달라야</b> 합니다.</div>
+    <div class="strip" id="setupStrip"></div>
+    <div class="row" style="margin-top:6px">
+      <button id="allRnd">🎲 전체 무작위</button>
+      <button id="oneRnd">🎲 이 개체만</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div class="prev"><img id="setupPrev"></div>
+      <div style="flex:1">
+        <div class="plabel" style="margin-bottom:4px"><b id="editNo" style="color:var(--accent2)">1번</b> 개체</div>
+        <div class="kv mono" id="editGeno"></div>
+        <div class="kv" id="editFit" style="margin-top:5px"></div>
+      </div>
+    </div>
+    <div id="editGenes" style="margin-top:8px"></div>
+  </div>
+
+  <div class="row"><button class="primary" id="submitGeno">이 유전자로 시작하기</button></div>
+  <div id="setupMsg"></div>
+</section>
+
+<!-- ═══ 게임 ═══ -->
+<section id="play" class="hide">
+
+  <div class="panel hide" id="inboxPanel">
+    <div class="plabel">교배 신청함</div>
+    <div id="inbox"></div>
+  </div>
+
+  <div class="panel" id="actPanel">
+    <div class="plabel" id="actLabel">…</div>
+    <div id="actBody"></div>
+  </div>
+
+  <div class="panel">
+    <div class="axis">↑건조 · ↓습함 &nbsp;|&nbsp; ←추움 · 더움→</div>
+    <div class="board" id="board"></div>
+    <div id="cellInfo" class="msg i" style="margin-top:9px">칸을 누르면 그곳의 정보가 나옵니다.</div>
+  </div>
+
+  <div class="panel">
+    <div class="plabel">내 개체 <span id="myCount" style="color:var(--accent2);font-weight:800"></span></div>
+    <div class="strip" id="myStrip"></div>
+    <div id="myDetail"></div>
+  </div>
+
+</section>
+
+<div class="foot">2026 광주하남영재교육원 · 중학 융합과정 · 변석환</div>
+</div>
+
+<script src="../../shared/config.js"></script>
+<script src="rules.js"></script>
+<script src="net.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+/* RUN() 과 OFFLINE 은 net.js 가 window 에 올려 준다.
+   여기서 다시 만들지 않는다 — 게임 코드는 서버가 무엇인지 몰라도 된다. */
+
+/* ══════════ 규칙표 ══════════ */
+let GENES=[], BIOMES=[], BIOME={};
+function biome(k){ return BIOME[k] || BIOMES[0]; }
+
+/* ══════════ 픽셀 렌더러 ══════════
+   표현형 9자리만 있으면 그릴 수 있다.
+   0 털 · 1 색 · 2 눈 · 3 다리 · 4 키 · 5 물저장 · 6 발톱 · 7 팔 · 8 수명   */
+const W=120, H=128;
+const DARK={lite:'#4fa87c',mid:'#2f8055',dark:'#1c5738'};
+const LIGHT={lite:'#fff4dc',mid:'#ecd6a4',dark:'#c4a970'};
+const OUT='#12203a', FUR='#fbfff2', WHITE='#fff', PUP='#101a30';
+let buf, solid;
+const ix=(x,y)=>y*W+x;
+function rst(){ buf=new Array(W*H).fill(null); solid=new Array(W*H).fill(false); }
+function px(x,y,c,m){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; buf[ix(x,y)]=c; if(m)solid[ix(x,y)]=true; }
+function isS(x,y){ return x>=0&&y>=0&&x<W&&y<H&&solid[ix(x,y)]; }
+function fEl(cx,cy,rx,ry,c,m){ for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)
+  if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1) px(cx+x,cy+y,c,m); }
+function shEl(cx,cy,rx,ry,c){ for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)
+  if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1&&isS(cx+x,cy+y)) buf[ix(cx+x,cy+y)]=c; }
+function outline(){ const a=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){ if(solid[ix(x,y)])continue;
+    if(isS(x-1,y)||isS(x+1,y)||isS(x,y-1)||isS(x,y+1)||isS(x-1,y-1)||isS(x+1,y-1)||isS(x-1,y+1)||isS(x+1,y+1)) a.push([x,y]); }
+  a.forEach(([x,y])=>buf[ix(x,y)]=OUT); }
+
+function buildPix(ph){
+  const P = i => ph.charAt(i)==='1';
+  rst();
+  const sk = P(1)?DARK:LIGHT, cx=60, bottom=112;
+  const bodyRy = P(4)?36:25, bodyRx=30, bodyCy=bottom-bodyRy;
+  if(P(0)){ const N=22; for(let i=0;i<N;i++){ const a=-Math.PI/2+i/(N-1)*Math.PI*2*0.92;
+    fEl((cx+Math.cos(a)*(bodyRx-1))|0,(bodyCy+Math.sin(a)*(bodyRy-1))|0,7,7,FUR,true); } }
+  const legN = P(3)?6:2, spread=bodyRx*1.5;
+  for(let i=0;i<legN;i++){
+    const fx=(cx-spread/2+spread*i/(legN-1))|0;
+    for(let y=0;y<9;y++)for(let x=-3;x<=3;x++) px(fx+x,bottom-3+y,sk.mid,true);
+    const fw=P(6)?6:3; fEl(fx,bottom+6,fw,3,sk.dark,true);
+    if(P(6)) for(let k=-1;k<=1;k++) px(fx+k*fw,bottom+9,OUT,true);
+  }
+  if(P(7)){ for(let k=-1;k<=1;k+=2){ const ax=cx+k*(bodyRx-2);
+    for(let t=0;t<10;t++) px((ax+k*t*0.5)|0,(bodyCy+4+t*0.6)|0,sk.mid,true);
+    fEl((ax+k*5)|0,(bodyCy+11)|0,3,3,sk.mid,true); } }
+  fEl(cx,bodyCy,bodyRx,bodyRy,sk.mid,true);
+  shEl(cx,(bodyCy+bodyRy*0.55)|0,(bodyRx*0.9)|0,(bodyRy*0.4)|0,sk.dark);
+  if(P(5)) fEl(cx,(bodyCy+bodyRy*0.42)|0,16,13,sk.lite,true);
+  outline();
+  const eR=P(2)?10:5, ey=(bodyCy-bodyRy*0.08)|0, es=Math.min(2*eR*2.1,bodyRx*1.6);
+  for(let i=0;i<2;i++){ const ex=(cx-es/2+es*i)|0;
+    fEl(ex,ey,eR+1,eR+2,OUT,false); fEl(ex,ey,eR,eR+1,WHITE,false);
+    fEl(ex,(ey+eR*0.35)|0,(eR*0.62)|0,(eR*0.72)|0,PUP,false);
+    px((ex-eR*0.3)|0,(ey-eR*0.2)|0,WHITE,false); }
+  { const my=(ey+eR+4)|0; for(let x=-3;x<=3;x++) px(cx+x,my+(Math.abs(x)===3?-1:0),OUT,false); }
+  // 더듬이 — 수명이 길면 길다
+  const at=(bodyCy-bodyRy)|0, aL=P(8)?17:9;
+  for(let k=-1;k<=1;k+=2){ const bx=cx+k*10;
+    for(let t=0;t<aL;t++) px((bx+k*t*0.4)|0,at-t,OUT,false);
+    fEl((bx+k*(aL*0.4))|0,at-aL-2,3,3,sk.mid,false); }
+}
+const off=document.createElement('canvas'); off.width=W; off.height=H;
+const octx=off.getContext('2d');
+const spriteCache={};
+function sprite(ph){
+  if(spriteCache[ph]) return spriteCache[ph];
+  buildPix(ph);
+  octx.clearRect(0,0,W,H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=buf[ix(x,y)]; if(c){ octx.fillStyle=c; octx.fillRect(x,y,1,1);} }
+  return spriteCache[ph]=off.toDataURL();
+}
+
+/* ══════════ 유전 도우미 ══════════ */
+function phOf(geno){ let s=''; for(let i=0;i<geno.length;i++) s += (geno.charAt(i)>='1'?'1':'0'); return s; }
+function genoLabel(g,i){ const G=GENES[i], S=G.s.toUpperCase(), s=G.s.toLowerCase();
+  const v=+g.charAt(i); return v===2?S+S:v===1?S+s:s+s; }
+function fitness(ph, bkey){
+  const b=biome(bkey); let sc=50;
+  for(const k in b.fav){
+    const idx=GENES.findIndex(g=>g.k===k);
+    const have = ph.charAt(idx)==='1'?1:0, w=(b.w&&b.w[k])||1;
+    sc += (have===b.fav[k]?12:-12)*w;
+  }
+  return Math.max(0,Math.min(100,Math.round(sc)));
+}
+/* 실제로 살아남을 확률 — 서버와 같은 식.
+   수명이 긴 개체는 여기서 대가를 치른다. 이걸 숨기면 «왜 죽었는지» 알 수 없다. */
+function survProb(ph, bkey){
+  const st=(S&&S.settings)||{};
+  const base=st.base!=null?st.base:0.30, span=st.span!=null?st.span:0.65, lc=st.lifeCost!=null?st.lifeCost:0.22;
+  const li=GENES.findIndex(g=>g.k==='life');
+  let p = base + fitness(ph,bkey)/100*span;
+  if(li>=0 && ph.charAt(li)==='1') p -= lc;
+  return Math.max(5, Math.min(95, Math.round(p*100)));
+}
+function isLong(ph){ const li=GENES.findIndex(g=>g.k==='life'); return li>=0 && ph.charAt(li)==='1'; }
+/* 수명의 맞바꾸기를 한 줄로 — 숨기면 학생이 고를 수가 없다 */
+function lifeNote(ph){
+  const st=(S&&S.settings)||{};
+  const kid = isLong(ph) ? (st.lifeKids!=null?st.lifeKids:2) : (st.kids!=null?st.kids:3);
+  if(isLong(ph)) return '<div style="color:var(--rec);font-size:11px;margin-top:3px">'
+    +'<b>수명 긺</b> — 자손 '+kid+'마리 · 생존 '+Math.round((st.lifeCost!=null?st.lifeCost:0.08)*100)
+    +'%p 손해 · 대신 <b>한 세대 더</b> 살아 교배를 두 번 합니다.</div>';
+  return '<div style="color:var(--accent);font-size:11px;margin-top:3px">'
+    +'<b>수명 짧음</b> — 자손 '+kid+'마리 · 생존 손해 없음 · 대신 <b>한 세대만</b> 삽니다.</div>';
+}
+function favTags(bkey){
+  const b=biome(bkey), out=[];
+  for(const k in b.fav){ const G=GENES.find(g=>g.k===k);
+    out.push('<span class="tag good">'+G.n+' : '+(b.fav[k]?G.d:G.r)+'</span>'); }
+  return out.join('');
+}
+const CO = (r,c)=> String.fromCharCode(65+r)+(c+1);
+const cheb = (a,b)=> Math.max(Math.abs(a.r-b.r), Math.abs(a.c-b.c));
+
+/* ══════════ 상태 ══════════ */
+let SID = localStorage.getItem('evoSid') || '';
+let NAME = localStorage.getItem('evoName') || '';
+let S = null;                 // 서버가 준 학생상태
+let tRef = Date.now();        // 마지막으로 서버와 통신한 시각
+let sel = null;               // 고른 내 개체 id
+let selCell = null;           // 고른 칸
+let draftGenos = [], editIdx = 0, home = null;
+let pendingMoves = {};        // 아직 서버에 못 보낸 이동
+let saveTimer = null;
+
+/* ══════════ 참가 ══════════ */
+$('#nameIn').value = NAME;
+$('#joinBtn').onclick = async ()=>{
+  const n = $('#nameIn').value.trim();
+  if(!n){ $('#joinMsg').innerHTML='<div class="msg r">이름을 넣어 주세요.</div>'; return; }
+  $('#joinBtn').disabled=true;
+  try{
+    const r = await RUN('참가', n);
+    if(!r.ok){ $('#joinMsg').innerHTML='<div class="msg r">'+r.msg+'</div>'; $('#joinBtn').disabled=false; return; }
+    SID=r.sid; NAME=r.name;
+    localStorage.setItem('evoSid',SID); localStorage.setItem('evoName',NAME);
+    $('#join').classList.add('hide');
+    boot();
+  }catch(e){
+    $('#joinMsg').innerHTML='<div class="msg r">'+(OFFLINE
+      ? '서버 설정을 찾지 못했습니다. 선생님이 준 <b>주소</b>로 들어와야 합니다.'
+      : '연결이 안 됩니다. 잠시 뒤 다시 눌러 주세요.')+'</div>';
+    $('#joinBtn').disabled=false;
+  }
+};
+
+/* ══════════ 시작 ══════════ */
+async function boot(){
+  GENES = RULES.GENES;
+  BIOMES = RULES.BIOMES;
+  BIOMES.forEach(b => BIOME[b.key] = b);
+  draftGenos = Array.from({length:10}, ()=>randGeno());
+  loop();
+}
+/* 단계마다 묻는 간격을 다르게 한다.
+   학생이 손댈 게 없는 단계까지 3초마다 물으면 서버 호출만 낭비된다. */
+function loop(){
+  tick().catch(()=>{}).then(()=>{
+    const ph = S ? S.phase : 'lobby';
+    const ms = (ph==='breed') ? 3000 : (ph==='move') ? 4000 : 7000;
+    setTimeout(loop, ms);
+  });
+}
+function randGeno(){ let s=''; for(let i=0;i<9;i++) s+=String(Math.floor(Math.random()*3)); return s; }
+
+/* ══════════ 폴링 ══════════ */
+let busy=false;
+async function tick(force){
+  if(!SID || busy) return;
+  busy=true;
+  try{
+    // 내가 방금 뭘 했으면 «바뀐 것 없음» 을 믿으면 안 된다
+    const r = await RUN('학생상태', SID, (force || !S) ? null : S.seq);
+    if(r && r.same){
+      // 판이 그대로다 — 시계만 맞춰 둔다
+      S.seq=r.seq; S.now=r.now; S.endAt=r.endAt;
+      tRef=Date.now(); paintTimer();
+      return;
+    }
+    if(!r.ok){
+      // 선생님이 명단을 지웠다. 그냥 두면 «연결 중…» 화면에 갇힌다
+      SID=''; S=null; localStorage.removeItem('evoSid');
+      $('#setup').classList.add('hide'); $('#play').classList.add('hide');
+      $('#join').classList.remove('hide');
+      $('#joinBtn').disabled=false;
+      $('#hPhase').textContent='다시 참가';
+      $('#joinMsg').innerHTML='<div class="msg r">선생님이 게임을 새로 시작했습니다. 다시 참가해 주세요.</div>';
+      return;
+    }
+    const phaseChanged = !S || S.phase!==r.phase || S.turn!==r.turn;
+    S = r;
+    tRef = Date.now();          // 남은 시간은 «마지막 통신» 을 기준으로 센다
+    if(phaseChanged){ sel=null; selCell=null; pendingMoves={}; }
+    paint();
+  }catch(e){ }
+  finally{ busy=false; }
+}
+
+/* ══════════ 그리기 ══════════ */
+function paint(){
+  if(!S) return;
+  $('#hGen').textContent = S.turn;
+  $('#hPhase').textContent = S.phaseName || '';
+  paintTimer();
+
+  const nInbox=(S.inbox||[]).length;
+  $('#hBadge').textContent = nInbox ? ('신청 '+nInbox) : '';
+  $('#hBadge').classList.toggle('hide', !nInbox);
+
+  const setupOn = (S.phase==='setup' && !S.me.ready);
+  $('#setup').classList.toggle('hide', !setupOn);
+  $('#play').classList.toggle('hide', setupOn);
+  $('#join').classList.add('hide');
+
+  if(setupOn){ paintSetup(); return; }
+  paintBoard();
+  paintMine();
+  paintAction();
+  paintInbox();
+}
+
+function paintTimer(){
+  const el=$('#hTime');
+  if(!S || !S.endAt){ el.textContent=''; return; }
+  const left = Math.max(0, Math.round((S.endAt - S.now)/1000) - Math.round((Date.now()-tRef)/1000));
+  const m=Math.floor(left/60), s=left%60;
+  el.textContent = m+':'+String(s).padStart(2,'0');
+  el.classList.toggle('hot', left<=30);
+}
+setInterval(()=>{ if(S&&S.endAt) paintTimer(); }, 1000);
+
+/* ── 유전자 제작 ── */
+function paintSetup(){
+  $('#stN').textContent = (S.settings&&S.settings.start)||10;
+  const want = (S.settings&&S.settings.start)||10;
+  while(draftGenos.length<want) draftGenos.push(randGeno());
+  draftGenos.length = want;
+
+  // 보드
+  const bd=$('#setupBoard'); bd.innerHTML='';
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    const b=biome(S.board[r][c]);
+    const el=document.createElement('div'); el.className='cell';
+    el.style.background=b.bg; el.style.color=b.ink;
+    el.innerHTML='<div class="co">'+CO(r,c)+'</div><div class="em">'+b.emoji+'</div><div class="nm">'+b.name+'</div>';
+    if(home && home.r===r && home.c===c) el.classList.add('here');
+    el.onclick=()=>{ home={r,c};
+      $('#homeInfo').className='msg g';
+      $('#homeInfo').innerHTML='<b>'+CO(r,c)+' · '+b.emoji+' '+b.name+'</b>에서 시작합니다.<br>여기서 유리한 형질 ▶ '+favTags(b.key);
+      paintSetup(); };
+    bd.appendChild(el);
+  }
+  // 개체 띠
+  const st=$('#setupStrip'); st.innerHTML='';
+  draftGenos.forEach((g,i)=>{
+    const d=document.createElement('div'); d.className='tile'+(i===editIdx?' on':'');
+    d.innerHTML='<img src="'+sprite(phOf(g))+'"><div class="lb">'+(i+1)+'번</div>';
+    d.onclick=()=>{ editIdx=i; paintSetup(); };
+    st.appendChild(d);
+  });
+  // 편집
+  const g=draftGenos[editIdx];
+  $('#editNo').textContent=(editIdx+1)+'번';
+  $('#setupPrev').src=sprite(phOf(g));
+  $('#editGeno').innerHTML='유전자형 <b>'+GENES.map((_,i)=>genoLabel(g,i)).join(' ')+'</b>';
+  if(home){
+    const ph=phOf(g), bk=S.board[home.r][home.c];
+    const f=fitness(ph,bk), sp=survProb(ph,bk);
+    $('#editFit').innerHTML='적응도 <span class="fit">'+f+'</span>'
+      +' &nbsp;→&nbsp; 살아남을 확률 <span class="fit" style="color:var(--accent2)">'+sp+'%</span>'
+      +'<div class="bar"><i style="width:'+sp+'%"></i></div>'
+      + lifeNote(ph); }
+  else $('#editFit').innerHTML='<span style="color:var(--sub)">시작 구역을 고르면 적응도가 나옵니다.</span>';
+
+  const box=$('#editGenes'); box.innerHTML='';
+  GENES.forEach((G,i)=>{
+    const row=document.createElement('div'); row.className='grow';
+    const S1=G.s.toUpperCase(), s1=G.s.toLowerCase();
+    row.innerHTML='<div class="gname">'+G.n+'<small>'+S1+'='+G.d+'</small></div>';
+    const seg=document.createElement('div'); seg.className='seg';
+    [[2,S1+S1,G.d],[1,S1+s1,G.d],[0,s1+s1,G.r]].forEach(([v,gl,phl])=>{
+      const b=document.createElement('button');
+      if(v===0) b.className='rec';
+      const HB=(S.settings&&S.settings.het)||{};
+      b.innerHTML = (v===1 && HB[G.k])
+        ? '<b>'+gl+' ★</b><small>'+phl+' +'+HB[G.k]+'</small>'
+        : '<b>'+gl+'</b><small>'+phl+'</small>';
+      if(+g.charAt(i)===v) b.classList.add('on');
+      b.onclick=()=>{ draftGenos[editIdx]=g.substring(0,i)+v+g.substring(i+1); paintSetup(); };
+      seg.appendChild(b);
+    });
+    row.appendChild(seg); box.appendChild(row);
+  });
+}
+$('#allRnd').onclick=()=>{ draftGenos=draftGenos.map(()=>randGeno()); paintSetup(); };
+$('#oneRnd').onclick=()=>{ draftGenos[editIdx]=randGeno(); paintSetup(); };
+$('#submitGeno').onclick=async ()=>{
+  if(!home){ $('#setupMsg').innerHTML='<div class="msg r">시작 구역을 먼저 고르세요.</div>'; return; }
+  $('#submitGeno').disabled=true;
+  try{
+    const r=await RUN('유전자제출', SID, draftGenos, home);
+    if(!r.ok){ $('#setupMsg').innerHTML='<div class="msg r">'+r.msg+'</div>'; $('#submitGeno').disabled=false; return; }
+    $('#setupMsg').innerHTML='<div class="msg g">제출했습니다. 선생님을 기다리세요.</div>';
+    tick(true);
+  }catch(e){ $('#setupMsg').innerHTML='<div class="msg r">연결이 안 됩니다.</div>'; $('#submitGeno').disabled=false; }
+};
+
+/* ── 보드 ── */
+function myAlive(){ return (S.me.aliens||[]).filter(a=>a.a); }
+function selAlien(){ return myAlive().find(a=>a.i===sel) || null; }
+
+function paintBoard(){
+  const bd=$('#board'); bd.innerHTML='';
+  const A = selAlien();
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    const b=biome(S.board[r][c]);
+    const cell=S.cells[r*5+c];
+    const el=document.createElement('div'); el.className='cell';
+    el.style.background=b.bg; el.style.color=b.ink;
+    let h='<div class="co">'+CO(r,c)+'</div><div class="em">'+b.emoji+'</div><div class="nm">'+b.name+'</div>';
+    if(cell.n) h+='<div class="cnt">'+cell.n+'</div>';
+    if(cell.mine) h+='<div class="mine">'+cell.mine+'</div>';
+    el.innerHTML=h;
+
+    if(A){
+      const from = { r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
+      const cur = pendingMoves[A.i] || {r:A.r,c:A.c};
+      if(cur.r===r && cur.c===c) el.classList.add('here');
+      else if(S.phase==='move' && cheb(from,{r,c})<=2) el.classList.add('reach');
+      else if(S.phase==='breed' && cheb(cur,{r,c})<=1) el.classList.add('mate');
+      else el.classList.add('dim');
+    }
+    el.onclick=()=>onCell(r,c);
+    bd.appendChild(el);
+  }
+}
+
+function onCell(r,c){
+  selCell={r,c};
+  const A=selAlien();
+  if(A && S.phase==='move'){
+    const from={ r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
+    if(cheb(from,{r,c})<=2){ pendingMoves[A.i]={r,c}; queueSave(); paintBoard(); paintAction(); return; }
+  }
+  showCell(r,c);
+  paintBoard();
+}
+
+function showCell(r,c){
+  const b=biome(S.board[r][c]);
+  const here = (S.near||[]).filter(x=>x.r===r&&x.c===c);
+  const mine = myAlive().filter(a=>{ const p=pendingMoves[a.i]||a; return p.r===r&&p.c===c; });
+  let h='<b>'+CO(r,c)+' · '+b.emoji+' '+b.name+'</b><br>여기서 유리한 형질 ▶ '+favTags(b.key);
+  if(mine.length) h+='<br><br><b style="color:var(--accent)">내 개체 '+mine.length+'마리</b>';
+  if(here.length){
+    h+='<br><b style="color:var(--rec)">다른 사람 개체 '+here.length+'마리</b><br>';
+    h+=here.map(x=>'<span class="tag">'+x.name+(x.bred?' ·교배함':'')+'</span>').join('');
+  } else if(!mine.length) h+='<br><span style="color:var(--sub)">비어 있습니다.</span>';
+  $('#cellInfo').className='msg i';
+  $('#cellInfo').innerHTML=h;
+}
+
+/* ── 내 개체 ── */
+function paintMine(){
+  // 죽은 개체가 사이사이 끼어 있으면 살아 있는 걸 찾기 힘들다
+  const list=(S.me.aliens||[]).slice().sort((x,y)=>(y.a?1:0)-(x.a?1:0));
+  const alive=list.filter(a=>a.a).length;
+  $('#myCount').textContent = alive+' / '+list.length+'마리';
+  const st=$('#myStrip'); st.innerHTML='';
+  list.forEach(a=>{
+    const p = pendingMoves[a.i]||a;
+    const d=document.createElement('div');
+    d.className='tile'+(a.i===sel?' on':'')+(a.a?'':' dead');
+    let h='<img src="'+sprite(phOf(a.g))+'">';
+    h+='<div class="cell-at">'+CO(p.r,p.c)+'</div>';
+    if(a.bred) h+='<div class="bd">✓</div>';
+    h+='<div class="lb">'+(a.a?(survProb(phOf(a.g), S.board[p.r][p.c])+'%'):'사망')+'</div>';
+    d.innerHTML=h;
+    d.onclick=()=>{ if(!a.a) return; sel=(sel===a.i?null:a.i); paint(); };
+    st.appendChild(d);
+  });
+  const A=selAlien();
+  if(!A){ $('#myDetail').innerHTML='<div class="msg i">개체를 누르면 유전자 상태가 나옵니다.</div>'; return; }
+  const p = pendingMoves[A.i]||A;
+  const ph = phOf(A.g);
+  const f = fitness(ph, S.board[p.r][p.c]);
+  const b = biome(S.board[p.r][p.c]);
+  let rows = GENES.map((G,i)=>{
+    const v=+A.g.charAt(i), dom = v>=1;
+    const want = (b.fav[G.k]!==undefined) ? b.fav[G.k] : null;
+    let mark='';
+    if(want!==null) mark = ((dom?1:0)===want) ? '<span class="tag good">유리</span>' : '<span class="tag bad">불리</span>';
+    return '<div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid #202741">'
+      +'<span style="width:64px;font-size:12px">'+G.n+'</span>'
+      +'<span class="mono" style="width:34px;font-weight:800;color:'+(dom?'var(--ink)':'var(--rec)')+'">'+genoLabel(A.g,i)+'</span>'
+      +'<span style="flex:1;font-size:11.5px;color:var(--sub)">'+(dom?G.d:G.r)+'</span>'+mark+'</div>';
+  }).join('');
+  $('#myDetail').innerHTML =
+    '<div style="display:flex;gap:10px;margin-top:8px"><div class="prev"><img src="'+sprite(ph)+'"></div>'
+    +'<div style="flex:1"><div class="kv">자리 <b>'+CO(p.r,p.c)+'</b> · '+b.emoji+' '+b.name+'</div>'
+    +'<div class="kv">적응도 <span class="fit">'+f+'</span> &nbsp;→&nbsp; 살아남을 확률 '
+    +'<span class="fit" style="color:var(--accent2)">'+survProb(ph,S.board[p.r][p.c])+'%</span>'
+    +'<div class="bar"><i style="width:'+survProb(ph,S.board[p.r][p.c])+'%"></i></div></div>'
+    + lifeNote(ph)
+    +'<div class="kv mono" style="margin-top:4px">'+GENES.map((_,i)=>genoLabel(A.g,i)).join(' ')+'</div></div></div>'
+    +'<div style="margin-top:8px">'+rows+'</div>';
+}
+
+/* ── 단계별 할 일 ── */
+function paintAction(){
+  const L=$('#actLabel'), B=$('#actBody');
+  const A=selAlien();
+  $('#inboxPanel').classList.toggle('hide', S.phase!=='breed');
+
+  if(S.phase==='setup'){
+    L.textContent='유전자 제작';
+    B.innerHTML='<div class="msg g">제출을 마쳤습니다. 선생님이 시작하기를 기다리세요.</div>';
+
+  }else if(S.phase==='survive'){
+    L.textContent='생존 판정';
+    const dead=(S.me.aliens||[]).filter(a=>!a.a).length;
+    const live=myAlive().length;
+    B.innerHTML='<div class="msg '+(dead?'r':'g')+'">이번 세대에서 <b>'+live+'마리</b>가 살아남고 <b>'+dead+'마리</b>가 죽었습니다.'
+      +'<br><span style="color:var(--sub)">적응도가 높을수록 살아남을 확률이 높습니다. 회색으로 변한 개체가 죽은 개체입니다.</span></div>';
+
+  }else if(S.phase==='move'){
+    L.textContent='이동 — 최대 2칸 (대각선 포함)';
+    if(!A){ B.innerHTML='<div class="msg i">아래에서 <b>내 개체</b>를 하나 고르고, 보드에서 <b>초록 칸</b>을 누르면 그리로 갑니다.</div>'; }
+    else{
+      const cur=pendingMoves[A.i]||A;
+      const from={ r:(A.r0==null?A.r:A.r0), c:(A.c0==null?A.c:A.c0) };
+      B.innerHTML='<div class="msg i"><b>'+CO(from.r,from.c)+'</b> 에서 출발 → 지금 <b style="color:var(--accent2)">'
+        +CO(cur.r,cur.c)+'</b><br><span style="color:var(--sub)">초록 칸을 누르면 옮겨집니다. 자동으로 저장됩니다.<br>'
+        +'거리는 <b>이동이 시작될 때의 자리</b>에서 잽니다 — 나눠서 여러 번 가도 2칸까지입니다.</span></div>'
+        +(S.forecast?'<div class="fc">📡 다음 세대 예보 — <b>'+S.forecast+'</b><br>'
+          +'지금 좋은 칸이 다음 세대에도 좋을지 생각해 보세요.</div>':'')
+        +'<div class="row" style="margin-top:8px"><button id="stay">제자리</button>'
+        +'<button id="allHere">'+CO(cur.r,cur.c)+'로 전부 모으기</button></div>';
+      $('#stay').onclick=()=>{ pendingMoves[A.i]={r:from.r,c:from.c}; queueSave(); paint(); };
+      // 16마리를 하나씩 옮기는 건 고민이 아니라 노동이다
+      $('#allHere').onclick=()=>{
+        let n=0;
+        myAlive().forEach(m=>{
+          const f={ r:(m.r0==null?m.r:m.r0), c:(m.c0==null?m.c:m.c0) };
+          if(cheb(f,cur)<=2){ pendingMoves[m.i]={r:cur.r,c:cur.c}; n++; }
+        });
+        queueSave(); paint();
+        $('#actBody').insertAdjacentHTML('beforeend','<div class="msg g">'+n+'마리를 '+CO(cur.r,cur.c)+'로 모았습니다.</div>');
+      };
+    }
+
+  }else if(S.phase==='breed'){
+    L.textContent='교배 — 인접 구역(대각선 포함)까지';
+    if(S.me.kids) L.innerHTML += ' &nbsp;<span class="badge" style="background:var(--accent);color:#07271d">자손 '
+      +S.me.kids+'마리 확보</span>';
+    // 태어난 자손의 유전자형을 보여 준다 — 숨은 열성이 드러나는 순간
+    if((S.me.kidGenos||[]).length){
+      const li=GENES.findIndex(x=>x.k==='life');
+      const cards=S.me.kidGenos.map((kg,i)=>{
+        const rec=GENES.map((G,j)=>+kg.charAt(j)===0?G.n:null).filter(Boolean);
+        return '<div class="tile" style="width:74px"><img src="'+sprite(phOf(kg))+'">'
+          +'<div class="lb" style="font-size:8px;letter-spacing:-.02em">'
+          +GENES.map((_,j)=>genoLabel(kg,j)).join('')+'</div>'
+          +(rec.length?'<div class="lb" style="color:var(--rec);font-size:8px">열성 '+rec.length+'</div>':'')+'</div>';
+      }).join('');
+      B.insertAdjacentHTML('afterbegin',
+        '<div class="plabel" style="margin-bottom:4px">이번 세대에 태어난 자손 — '
+        +'<b style="color:var(--rec)">분홍 글자(소문자 두 개)가 겉으로 드러난 열성</b>입니다</div>'
+        +'<div class="strip">'+cards+'</div>');
+    }
+    if(!A){ B.innerHTML='<div class="msg i">아래에서 <b>내 개체</b>를 고르면 교배할 수 있는 상대가 나옵니다.<br>'
+        +'<span style="color:var(--sub)">친구와 말로 정한 뒤 신청해도 되고, 바로 신청해도 됩니다.</span></div>'; }
+    else if(A.bred){ B.innerHTML='<div class="msg g">이 개체는 이미 교배했습니다. 다른 개체를 골라 보세요.</div>'; }
+    else{
+      const cands=[];
+      // 남의 개체를 먼저 보여 준다 — 자손을 더 많이 받는 쪽이다
+      (S.near||[]).forEach(x=>{ if(!x.bred && cheb(x,A)<=1) cands.push({type:'other',x}); });
+      const myIdx={}; (S.me.aliens||[]).forEach((m,i)=>myIdx[m.i]=i+1);
+      myAlive().forEach(m=>{ if(m.i!==A.i && !m.bred && cheb(m,A)<=1) cands.push({type:'mine',x:m}); });
+      if(!cands.length){
+        B.innerHTML='<div class="msg r">인접 구역에 교배할 상대가 없습니다.<br>'
+          +'<span style="color:var(--sub)">시간이 끝나면 <b>같은 구역</b> 안에서 자동으로 짝이 정해집니다. 같은 구역에도 없으면 자손을 남기지 못합니다.</span></div>';
+      }else{
+        const st=S.settings||{};
+        B.innerHTML='<div class="plabel">교배할 상대를 고르세요 — 자손은 <b>부모 각자의 주인</b>에게 갑니다</div>'
+        +'<div class="msg i" style="margin-top:0">남과 교배하면 자손 <b>'+(st.kids||3)+'</b>마리, '
+        +'내 개체끼리는 <b>'+Math.max(1,Math.round(((st.kids||3)+(st.kids||3))/2)-(st.inbreed||1))+'</b>마리입니다 (근친약세).</div>'
+        +cands.map((c,i)=>{
+          const x=c.x;
+          const 남 = c.type!=='mine';
+          const nm = 남 ? x.name : ('내 '+(myIdx[x.i]||'?')+'번 개체');
+          const ph = 남 ? x.ph : phOf(x.g);
+          const sp = survProb(ph, S.board[x.r][x.c]);
+          return '<div class="req"><img src="'+sprite(ph)+'" style="width:40px;image-rendering:pixelated">'
+            +'<div class="t"><b style="color:'+(남?'var(--accent)':'var(--sub)')+'">'+nm+'</b>'
+            +'<br><span style="color:var(--sub);font-size:11px">'+CO(x.r,x.c)+' 구역 · 생존 '+sp+'%'
+            +(남?'':' · 근친')+'</span></div>'
+            +'<button class="'+(남?'go':'')+'" data-k="'+i+'">'+(남?'신청':'교배')+'</button></div>';
+        }).join('');
+        $$('#actBody button[data-k]').forEach(btn=>{
+          btn.onclick=async ()=>{
+            const c=cands[+btn.dataset.k];
+            btn.disabled=true; btn.textContent='…';
+            try{
+              const r=await RUN('교배신청', SID, A.i, (c.type==='mine'?SID:c.x.sid), c.x.i);
+              if(!r.ok){ btn.textContent='실패'; alert(r.msg); }
+              else { btn.textContent = r.즉시 ? '완료' : '신청함'; }
+              tick(true);
+            }catch(e){ btn.disabled=false; btn.textContent='다시'; }
+          };
+        });
+      }
+    }
+
+  }else if(S.phase==='next'){
+    L.textContent='세대 교체';
+    B.innerHTML='<div class="msg i">자손이 태어나고 어버이는 죽습니다.<br>'
+      +'<span style="color:var(--sub)"><b>수명이 긴</b> 개체만 한 세대를 더 삽니다.</span></div>';
+
+  }else if(S.phase==='env'){
+    L.textContent='환경 변화';
+    B.innerHTML='<div class="msg r">행성의 기후가 바뀌었습니다. <b>어제 유리하던 형질이 오늘은 불리할 수 있습니다.</b><br>'
+      +'<span style="color:var(--sub)">내 개체를 눌러 적응도가 어떻게 달라졌는지 확인해 보세요.</span></div>'
+      +(S.forecast?'<div class="fc">📡 <b>다음</b> 세대 예보 — <b>'+S.forecast+'</b></div>':'');
+
+  }else{
+    L.textContent = S.phaseName||'대기';
+    B.innerHTML='<div class="msg i">선생님 화면을 보세요.</div>';
+  }
+}
+
+/* 이동 자동 저장 */
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async ()=>{
+    const moves=Object.keys(pendingMoves).map(i=>({i, r:pendingMoves[i].r, c:pendingMoves[i].c}));
+    if(!moves.length) return;
+    try{ await RUN('이동제출', SID, moves); }catch(e){}
+  }, 700);
+}
+
+/* ── 신청함 ── */
+function paintInbox(){
+  if(S.phase!=='breed') return;
+  const box=$('#inbox');
+  const inb=S.inbox||[];
+  const sent=(S.sent||[]).filter(q=>q.state==='pending');
+  const myIdx={}; (S.me.aliens||[]).forEach((m,i)=>myIdx[m.i]=i+1);
+  let h='';
+  if(inb.length){
+    // 겉모습을 보고 짝을 고르는 게 이 게임의 핵심이다.
+    // 이름만 띄우면 학생은 아무거나 누르게 된다.
+    h += inb.map(q=>{
+      const sp = q.fph ? survProb(q.fph, S.board[q.fr][q.fc]) : null;
+      return '<div class="req">'
+        +(q.fph?'<img src="'+sprite(q.fph)+'" style="width:44px;image-rendering:pixelated">':'')
+        +'<div class="t"><b style="color:var(--accent)">'+q.fn+'</b> 님의 개체가'
+        +' 내 <b>'+(myIdx[q.ta]||'?')+'번</b> 개체와 교배를 신청했습니다.'
+        +'<br><span style="color:var(--sub);font-size:11px">상대 '+CO(q.fr,q.fc)+' 구역'
+        +(sp!=null?' · 생존 '+sp+'%':'')+'</span></div>'
+        +(q.tph?'<img src="'+sprite(q.tph)+'" style="width:32px;image-rendering:pixelated;opacity:.75">':'')
+        +'<button class="go" data-y="'+q.id+'">수락</button>'
+        +'<button class="warn" data-n="'+q.id+'">거절</button></div>';
+    }).join('');
+  }
+  if(sent.length) h += '<div class="msg i">보낸 신청 '+sent.length+'건 — 상대가 수락하기를 기다립니다.<br>'
+    +'<span style="color:var(--sub)">답이 없으면 옆 친구에게 말로 부탁해 보세요.</span></div>';
+  if(!h) h='<div class="msg i">받은 신청이 없습니다.</div>';
+  box.innerHTML=h;
+  $$('#inbox button[data-y]').forEach(b=>b.onclick=()=>answer(b.dataset.y,true,b));
+  $$('#inbox button[data-n]').forEach(b=>b.onclick=()=>answer(b.dataset.n,false,b));
+}
+async function answer(id, ok, btn){
+  btn.disabled=true;
+  try{ const r=await RUN('교배응답', SID, id, ok); if(!r.ok) alert(r.msg); tick(true); }
+  catch(e){ btn.disabled=false; }
+}
+
+/* ══════════ 자동 시작 ══════════ */
+if(SID){ $('#join').classList.add('hide'); boot(); }
+else if(OFFLINE){
+  $('#joinMsg').innerHTML='<div class="msg r">서버 설정을 찾지 못했습니다.<br>선생님이 준 <b>주소</b>로 들어와야 게임이 됩니다.</div>';
+}
+</script>
