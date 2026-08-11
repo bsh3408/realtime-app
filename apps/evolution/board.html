@@ -1,0 +1,352 @@
+<!-- 외계 행성 진화 게임 — 빔 프로젝터 화면
+     realtime-app/apps/evolution/board.html
+     선생님 진행판(teacher.html)과 따로 씁니다.
+     이 화면은 «보여 주기» 만 합니다 — 아무것도 조작하지 않습니다.
+     구역을 누르면 그 구역의 외계인들이 돌아다니는 모습이 크게 뜹니다. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>외계 행성 — 빔 화면</title>
+<style>
+ :root{--bg:#0d1326;--panel:#161d34;--panel2:#101830;--line:#28324f;--ink:#eaf0ff;--sub:#9aa6cc;
+       --accent:#7cf0c8;--accent2:#ffd36b;--rec:#ff8fb0;--bad:#ff6b6b}
+ *{box-sizing:border-box}
+ body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#1c2748 0,transparent 60%),var(--bg);
+      color:var(--ink);font-family:system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+      line-height:1.4;overflow-x:hidden}
+ .wrap{max-width:1600px;margin:0 auto;padding:14px 18px 30px}
+
+ .top{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:12px}
+ .top .t{font-size:22px;font-weight:800;letter-spacing:-.02em}
+ .top .m{font-size:13px;color:var(--sub);font-weight:700}
+ .top .m b{display:block;color:var(--accent2);font-size:30px;line-height:1.05}
+ .top .sp{flex:1}
+ .ev{background:rgba(255,107,107,.14);border:1px solid var(--bad);border-radius:12px;
+     padding:8px 16px;font-size:15px;font-weight:700}
+
+ .cols{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+ @media(max-width:1100px){.cols{grid-template-columns:1fr}}
+ .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+ .plabel{font-size:12.5px;color:var(--sub);margin:0 0 10px;font-weight:700}
+
+ /* 보드 */
+ .board{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+ .cell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;
+       box-shadow:inset 0 0 0 1px #ffffff18;transition:transform .12s, box-shadow .12s;
+       display:flex;flex-direction:column}
+ .cell:hover{transform:scale(1.035);box-shadow:inset 0 0 0 2px var(--accent2),0 6px 22px #0007;z-index:3}
+ .cell .hd{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
+           padding:5px 7px 2px;text-shadow:0 1px 3px #0008}
+ .cell .hd .co{opacity:.55;font-size:10px}
+ .cell .n{position:absolute;top:5px;right:7px;font-size:13px;font-weight:800;color:#fff;
+          background:#0009;border:1px solid #ffffff2e;border-radius:8px;padding:0 7px}
+ .cell .mini{flex:1;display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start;padding:2px 5px}
+ .cell .mini img{width:21px;image-rendering:pixelated;display:block}
+ .cell .pool{padding:4px 6px 6px;display:flex;gap:2px;align-items:flex-end;height:34px}
+ .cell .pool i{flex:1;background:#ffffff55;border-radius:2px 2px 0 0;min-height:2px}
+ .cell .pool i.hid{background:var(--accent2)}
+ .cell.empty .pool{display:none}
+ .axis{color:var(--sub);font-size:12px;margin:0 2px 8px}
+
+ /* 유전자 풀 */
+ .sparks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ .sp1{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+ .sp1 .t{font-size:12px;color:var(--sub);font-weight:700;display:flex;justify-content:space-between}
+ .sp1 .t b{color:var(--accent2);font-family:ui-monospace,monospace;font-size:13px}
+ .sp1 svg{display:block;width:100%;height:40px;margin-top:3px}
+
+ /* 팝업 */
+ .modal{position:fixed;inset:0;background:#060912ee;z-index:90;display:none;
+        align-items:center;justify-content:center;padding:26px}
+ .modal.on{display:flex}
+ .box{background:var(--panel);border:1px solid var(--line);border-radius:20px;
+      width:min(1280px,96vw);max-height:94vh;overflow:auto;padding:18px 20px 20px}
+ .box .bh{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+ .box .bh .nm{font-size:26px;font-weight:800}
+ .box .bh .sub{color:var(--sub);font-size:14px}
+ .box .bh .sp{flex:1}
+ .box .bh button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+                 border-radius:12px;padding:10px 18px;font:inherit;font-size:15px;
+                 font-weight:700;cursor:pointer}
+ #scene{display:block;width:100%;border-radius:14px;image-rendering:pixelated;background:#111}
+ .bars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;margin-top:14px}
+ .bar1{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+ .bar1 .l{font-size:11.5px;color:var(--sub);display:flex;justify-content:space-between;font-weight:700}
+ .bar1 .l b{color:var(--accent2);font-family:ui-monospace,monospace}
+ .bar1 .g{height:7px;background:#0c1224;border-radius:5px;overflow:hidden;margin-top:5px}
+ .bar1 .g i{display:block;height:100%;background:var(--accent)}
+ .bar1.hid .g i{background:var(--accent2)}
+
+ #gate{max-width:420px;margin:80px auto}
+ input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+       border-radius:11px;padding:12px;font-size:16px;outline:none}
+ .btn{background:var(--accent2);color:#3a2a00;border:0;border-radius:12px;padding:13px;
+      font:inherit;font-weight:800;font-size:16px;width:100%;margin-top:10px;cursor:pointer}
+ .msg{border-radius:10px;padding:9px 12px;font-size:13px;margin-top:10px;
+      border:1px solid var(--line);color:var(--sub)}
+ .hide{display:none}
+</style>
+
+<script src="../../shared/config.js"></script>
+<script src="rules.js"></script>
+<script src="pix.js"></script>
+<script src="net.js"></script>
+
+<div class="wrap">
+
+<section id="gate">
+  <div class="panel">
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">빔 화면</div>
+    <div class="plabel">선생님 코드를 넣어 주세요.</div>
+    <input type="text" id="codeIn" placeholder="코드">
+    <button class="btn" id="codeBtn">열기</button>
+    <div id="gateMsg"></div>
+  </div>
+</section>
+
+<section id="main" class="hide">
+  <div class="top">
+    <div class="t">👽 외계 행성</div>
+    <div class="m">세대<b id="tGen">0</b></div>
+    <div class="m">지금<b id="tPhase" style="font-size:19px">—</b></div>
+    <div class="m">전체 개체<b id="tPop">0</b></div>
+    <div class="sp"></div>
+    <div id="evBox"></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <div class="axis">↑건조 · ↓습함 &nbsp;|&nbsp; ←추움 · 더움→ &nbsp;·&nbsp;
+        <b style="color:var(--accent2)">구역을 누르면 그 안이 크게 보입니다</b></div>
+      <div class="board" id="board"></div>
+      <div class="msg" id="envMsg"></div>
+    </div>
+
+    <div class="panel">
+      <div class="plabel">유전자 풀 — 우성 대립유전자의 비율(%) · 🔒는 겉모습에 안 드러나는 형질</div>
+      <div class="sparks" id="sparks"></div>
+      <div class="msg">올라가는 선이 <b style="color:var(--accent)">지금 환경이 고르고 있는</b> 형질입니다.
+        무엇이 왜 올라가는지는 알려 주지 마세요 — 학생이 알아내야 합니다.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- 구역 팝업 -->
+<div class="modal" id="modal">
+  <div class="box">
+    <div class="bh">
+      <span class="nm" id="mNm">—</span>
+      <span class="sub" id="mSub"></span>
+      <span class="sp"></span>
+      <button id="mClose">닫기 ✕</button>
+    </div>
+    <canvas id="scene" width="1180" height="440"></canvas>
+    <div class="plabel" style="margin:14px 0 0">이 구역의 유전자 풀</div>
+    <div class="bars" id="mBars"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const CO = (r,c)=> String.fromCharCode(65+r)+(c+1);
+let CODE = new URLSearchParams(location.search).get('k') || localStorage.getItem('evoCode') || '';
+let T = null, GENES = RULES.GENES;
+const biome = k => RULES.바이옴(k);
+
+/* ── 잠금 ── */
+$('#codeBtn').onclick = ()=>{ CODE=$('#codeIn').value.trim(); localStorage.setItem('evoCode',CODE); start(); };
+if (CODE) start();
+else if (window.OFFLINE) $('#gateMsg').innerHTML='<div class="msg">서버 설정을 찾지 못했습니다.</div>';
+
+async function start(){
+  const r = await RUN('교사판', CODE).catch(()=>null);
+  if(!r || !r.ok){ $('#gateMsg').innerHTML='<div class="msg">코드가 다릅니다.</div>'; return; }
+  $('#gate').classList.add('hide'); $('#main').classList.remove('hide');
+  T = r; paint();
+  setInterval(poll, 3000);
+}
+let busy=false;
+async function poll(){
+  if(busy) return; busy=true;
+  try{ const r = await RUN('교사판', CODE); if(r && r.ok){ T=r; paint(); } }catch(e){}
+  finally{ busy=false; }
+}
+
+/* ── 그리기 ── */
+let 보드사인='';
+function paint(){
+  $('#tGen').textContent = T.turn;
+  $('#tPhase').textContent = T.phaseName || '—';
+  $('#tPop').textContent = T.총개체;
+
+  const R2 = T.result;
+  $('#evBox').innerHTML = (R2 && R2.재해)
+    ? '<div class="ev">'+R2.재해.emoji+' <b>'+R2.재해.이름+'</b> — '+R2.재해.말
+      +' &nbsp;<span style="color:var(--bad)">'+R2.재해.죽음+'마리 사망</span></div>'
+    : '';
+
+  const e = T.env||{dt:0,dm:0};
+  $('#envMsg').innerHTML = '기후 이동 — 온도 <b style="color:var(--accent2)">'+(e.dt>0?'+':'')+e.dt.toFixed(2)
+    +'</b> · 습도 <b style="color:var(--accent2)">'+(e.dm>0?'+':'')+e.dm.toFixed(2)+'</b>'
+    + (T.forecast ? ' &nbsp;·&nbsp; 📡 다음 예보 <b style="color:var(--accent2)">'+T.forecast+'</b>' : '');
+
+  // 판이 그대로면 다시 그리지 않는다 — 빔이 깜빡인다
+  const sig = JSON.stringify([T.board, T.cells.map(c=>c.list.length), T.turn]);
+  if (sig !== 보드사인) { 보드사인 = sig; paintBoard(); }
+  paintSparks();
+  if (모달칸) 팝업그리기(모달칸.r, 모달칸.c, true);
+}
+
+function paintBoard(){
+  const bd = $('#board'); bd.innerHTML='';
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const b = biome(T.board[r][c]);
+    const cell = T.cells[r*5+c];
+    const el = document.createElement('div');
+    el.className = 'cell' + (cell.list.length ? '' : ' empty');
+    el.style.background = b.bg; el.style.color = b.ink;
+    let h = '<div class="hd"><span class="co">'+CO(r,c)+'</span><span>'+b.emoji+'</span>'
+          + '<span>'+b.name+'</span></div>';
+    if (cell.list.length) h += '<div class="n">'+cell.list.length+'</div>';
+    h += '<div class="mini">'
+      + cell.list.slice(0,12).map(a=>'<img src="'+sprite(a.ph)+'">').join('')
+      + '</div>';
+    // 이 구역의 유전자 풀을 작은 막대로
+    const f = 구역빈도(r,c);
+    if (f.n) h += '<div class="pool">' + GENES.map(G =>
+        '<i class="'+(G.보임?'':'hid')+'" style="height:'+Math.max(2,f.f[G.k]*0.30)+'px"></i>').join('')
+      + '</div>';
+    el.innerHTML = h;
+    el.onclick = ()=> 팝업열기(r,c);
+    bd.appendChild(el);
+  }
+}
+
+/* 구역별 유전자 풀 — 교사판이 준 겉모습으로는 못 구하니 개체 원본을 쓴다 */
+function 구역빈도(r,c){
+  const A = (T._aliens||[]).filter(a=>a.alive && a.r===r && a.c===c);
+  return RULES.빈도(A);
+}
+
+function paintSparks(){
+  const rows = T.hist || [];
+  $('#sparks').innerHTML = GENES.map(G=>{
+    const vals = rows.map(x=>x.f[G.k]).filter(v=>v!=null);
+    const last = vals.length ? vals[vals.length-1] : 0;
+    let path='';
+    if (vals.length>1) path = vals.map((v,i)=>{
+      const x = i/(vals.length-1)*96+2, y = 36-(v/100)*32;
+      return (i?'L':'M')+x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+    return '<div class="sp1"><div class="t"><span>'+(G.보임?'':'🔒 ')+G.n+'</span><b>'+last+'%</b></div>'
+      +'<svg viewBox="0 0 100 40" preserveAspectRatio="none">'
+      +'<line x1="0" y1="20" x2="100" y2="20" stroke="#28324f" stroke-width="1"/>'
+      +(path?'<path d="'+path+'" fill="none" stroke="'+(G.보임?'#7cf0c8':'#ffd36b')
+        +'" stroke-width="2.2" vector-effect="non-scaling-stroke"/>':'')
+      +'</svg></div>';
+  }).join('');
+}
+
+/* ══ 구역 팝업 — 외계인들이 돌아다닌다 ══════════════════════════ */
+let 모달칸 = null, 배우 = [], 애니 = null, 그림장 = {};
+
+function 팝업열기(r,c){
+  모달칸 = {r,c};
+  $('#modal').classList.add('on');
+  팝업그리기(r,c,false);
+  if(!애니) 돌리기();
+}
+$('#mClose').onclick = 닫기;
+$('#modal').onclick = e => { if(e.target.id==='modal') 닫기(); };
+addEventListener('keydown', e => { if(e.key==='Escape') 닫기(); });
+function 닫기(){
+  모달칸=null; $('#modal').classList.remove('on');
+  if(애니){ cancelAnimationFrame(애니); 애니=null; }
+}
+
+function 팝업그리기(r,c,조용히){
+  const b = biome(T.board[r][c]);
+  const list = T.cells[r*5+c].list;
+  $('#mNm').textContent = b.emoji + ' ' + b.name + ' — ' + CO(r,c);
+  $('#mSub').textContent = list.length ? (list.length + '마리가 살고 있습니다') : '아무도 없습니다';
+
+  // 배우 만들기 (개체가 바뀌었을 때만 새로)
+  const key = list.map(a=>a.sid+a.ph).join('|');
+  if (key !== 배우키) {
+    배우키 = key;
+    const cv = $('#scene');
+    배우 = list.map((a,i)=>{
+      if(!그림장[a.ph]){ const im=new Image(); im.src=sprite(a.ph); 그림장[a.ph]=im; }
+      return { ph:a.ph, name:a.name,
+        x: 60 + Math.random()*(cv.width-160),
+        y: 150 + Math.random()*(cv.height-230),
+        dir: Math.random()<0.5?-1:1,
+        spd: 0.25 + Math.random()*0.75,
+        ph2: Math.random()*6, 쉼: 0 };
+    });
+  }
+
+  // 이 구역의 유전자 풀
+  const f = 구역빈도(r,c);
+  $('#mBars').innerHTML = f.n
+    ? GENES.map(G=>'<div class="bar1'+(G.보임?'':' hid')+'"><div class="l"><span>'
+        +(G.보임?'':'🔒 ')+G.n+'</span><b>'+f.f[G.k]+'%</b></div>'
+        +'<div class="g"><i style="width:'+f.f[G.k]+'%"></i></div></div>').join('')
+    : '<div class="msg">개체가 없어 유전자 풀이 없습니다.</div>';
+}
+let 배우키 = '';
+
+function 돌리기(){
+  const cv = $('#scene'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  function 한장(){
+    if(!모달칸){ 애니=null; return; }
+    const b = biome(T.board[모달칸.r][모달칸.c]);
+    // 바탕
+    const g = ctx.createLinearGradient(0,0,0,cv.height);
+    g.addColorStop(0, b.bg); g.addColorStop(1, '#0b0f1a');
+    ctx.fillStyle = g; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle = '#00000014';
+    for(let y=cv.height*0.42; y<cv.height; y+=16) ctx.fillRect(0,y,cv.width,5);
+
+    // 뒤에 있는 것부터
+    const 정렬 = 배우.slice().sort((p,q)=>p.y-q.y);
+    for(const a of 정렬){
+      // 걷기
+      a.쉼 = a.쉼>0 ? a.쉼-1 : 0;
+      if(!a.쉼){
+        a.x += a.dir*a.spd; a.ph2 += 0.12;
+        if(a.x < 30){ a.x=30; a.dir=1; }
+        if(a.x > cv.width-110){ a.x=cv.width-110; a.dir=-1; }
+        if(Math.random()<0.006){ a.dir*=-1; }
+        if(Math.random()<0.004){ a.쉼 = 40+Math.random()*70; }
+        if(Math.random()<0.008){ a.y = Math.max(140, Math.min(cv.height-90, a.y+(Math.random()-0.5)*40)); }
+      }
+      const im = 그림장[a.ph];
+      if(!im || !im.complete) continue;
+      const s = 78, bob = Math.sin(a.ph2)*3;
+      ctx.save();
+      // 그림자
+      ctx.fillStyle='#0004';
+      ctx.beginPath(); ctx.ellipse(a.x+s/2, a.y+s*0.92, s*0.28, s*0.07, 0, 0, 6.3); ctx.fill();
+      if(a.dir<0){ ctx.translate(a.x+s, a.y+bob); ctx.scale(-1,1); ctx.drawImage(im,0,0,s,s*1.07); }
+      else ctx.drawImage(im, a.x, a.y+bob, s, s*1.07);
+      ctx.restore();
+      // 이름표
+      ctx.font='bold 13px system-ui'; ctx.textAlign='center';
+      const nx=a.x+s/2, ny=a.y+bob-6;
+      const w=ctx.measureText(a.name).width+12;
+      ctx.fillStyle='#000000aa'; ctx.fillRect(nx-w/2, ny-14, w, 18);
+      ctx.fillStyle='#fff'; ctx.fillText(a.name, nx, ny);
+    }
+    if(!배우.length){
+      ctx.fillStyle='#ffffff66'; ctx.font='bold 22px system-ui'; ctx.textAlign='center';
+      ctx.fillText('이 구역에는 아무도 살지 않습니다', cv.width/2, cv.height/2);
+    }
+    애니 = requestAnimationFrame(한장);
+  }
+  한장();
+}
+</script>

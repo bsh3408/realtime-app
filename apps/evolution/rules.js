@@ -3,73 +3,109 @@
  *  2026 광주하남영재교육원 · 중학 융합과정 (변석환) · 18차시
  *
  *  이 파일에는 서버도 화면도 없다. 순수한 규칙만 있다.
- *  학생 화면과 선생님 화면이 똑같이 읽고, 값이 어긋나지 않는다.
+ *  학생 화면·선생님 화면·빔 화면이 똑같이 읽어서 값이 어긋나지 않는다.
  *
- *  ══ 숫자를 함부로 바꾸지 말 것 ═════════════════════════════════
- *  아래 값들은 학생 12명·12세대를 여섯 번씩 돌려 맞춘 것이다.
- *  하나를 건드리면 나머지가 무너진다. 바꿨으면 반드시 다시 돌려 봐야 한다.
- *    · 수명 대립유전자 빈도가 0.5 근처에 머무는가 (어느 쪽도 정답이 아니어야 한다)
- *    · 물저장 잡종(Ww)이 40% 위로 유지되는가 (멘델이 게임에 살아 있어야 한다)
- *    · 개체 수가 상한에 눌러붙지도, 전멸하지도 않는가
+ *  ══ 학생에게 «정답표» 를 주지 않는다 ═══════════════════════════
+ *  어느 구역에서 무엇이 유리한지는 화면 어디에도 나오지 않는다.
+ *  학생은 죽고 살아남는 것을 보고 스스로 알아내야 한다.
+ *  그래서 fav 표는 여기(코드)에만 있고, 화면으로는 절대 내보내지 않는다.
  *
- *  모듈을 쓰지 않는다. window.RULES 로 올린다 —
- *  게임 파일이 일반 스크립트라 섞이면 실행 순서가 꼬인다.
+ *  모듈을 쓰지 않는다. window.RULES 로 올린다.
  * ════════════════════════════════════════════════════════════════ */
 
 (function (전역) {
   'use strict';
 
-  /* ── 유전자 9개 ──────────────────────────────────────────────
+  /* ── 유전자 13개 ──────────────────────────────────────────────
      값 2 = 순종우성(FF) · 1 = 잡종(Ff) · 0 = 순종열성(ff)
-     겉모습은 «우성이 하나라도 있으면 우성» (우열의 법칙) */
+     겉모습은 «우성이 하나라도 있으면 우성» (우열의 법칙)
+
+     보임:true  — 그림에 드러난다. 남의 개체도 눈으로 보고 고를 수 있다
+     보임:false — 그림에 안 드러난다. 교배해 봐야, 살아 봐야 안다
+                  숨은 형질도 환경에 따라 유불리가 있다 */
   var GENES = [
-    { k:'fur',   n:'털',          s:'F', d:'두꺼움', r:'얇음' },
-    { k:'color', n:'색',          s:'D', d:'어두움', r:'밝음' },
-    { k:'eye',   n:'눈',          s:'E', d:'큰 눈',  r:'작은 눈' },
-    { k:'leg',   n:'다리',        s:'L', d:'많음',   r:'적음' },
-    { k:'tall',  n:'키',          s:'T', d:'큼',     r:'작음' },
-    { k:'water', n:'물저장 조직', s:'W', d:'있음',   r:'없음' },
-    { k:'grip',  n:'발톱',        s:'G', d:'강함',   r:'약함' },
-    { k:'arm',   n:'팔',          s:'A', d:'있음',   r:'없음' },
-    { k:'life',  n:'수명',        s:'V', d:'긺',     r:'짧음' }
+    /* 보이는 형질 9 */
+    { k:'fur',   n:'털',          s:'F', d:'두꺼움', r:'얇음',   보임:true },
+    { k:'color', n:'색',          s:'D', d:'어두움', r:'밝음',   보임:true },
+    { k:'eye',   n:'눈',          s:'E', d:'큰 눈',  r:'작은 눈', 보임:true },
+    { k:'leg',   n:'다리',        s:'L', d:'많음',   r:'적음',   보임:true },
+    { k:'tall',  n:'키',          s:'T', d:'큼',     r:'작음',   보임:true },
+    { k:'water', n:'물저장 조직', s:'W', d:'있음',   r:'없음',   보임:true },
+    { k:'grip',  n:'발톱',        s:'G', d:'강함',   r:'약함',   보임:true },
+    { k:'arm',   n:'팔',          s:'A', d:'있음',   r:'없음',   보임:true },
+    { k:'fin',   n:'지느러미',    s:'N', d:'있음',   r:'없음',   보임:true },
+    /* 숨은 형질 4 — 겉으로 드러나지 않는다 */
+    { k:'life',  n:'수명',        s:'V', d:'긺',     r:'짧음',   보임:false },
+    { k:'fec',   n:'번식력',      s:'R', d:'높음',   r:'낮음',   보임:false },
+    { k:'heat',  n:'내열',        s:'H', d:'강함',   r:'약함',   보임:false },
+    { k:'tox',   n:'내독',        s:'X', d:'강함',   r:'약함',   보임:false }
   ];
   var NG = GENES.length;
+  var 보이는수 = 0;
+  for (var _i = 0; _i < NG; _i++) if (GENES[_i].보임) 보이는수++;
 
   /* ── 잡종이 유리한 형질 ───────────────────────────────────────
      물저장 조직만은 «잡종일 때» 적응도가 오른다.
        WW = 물주머니가 둘 — 넉넉하지만 몸이 무거워 굼뜨다
        Ww = 하나        — 딱 좋다
        ww = 없음        — 마른 곳에서 버티지 못한다
-
-     이게 없으면 학생은 잡종을 고를 이유가 하나도 없다.
-     겉모습이 순종우성과 똑같은데 열성만 자손에게 넘겨 주니까.
-     그러면 3:1 분리비도, 숨은 열성이 튀어나오는 놀라움도 게임에서 사라진다.
-     실제로 빼고 돌려 보니 잡종이 9%까지 떨어졌다.
-     넣으면 WW 29 : Ww 46 : ww 25 로 유지된다 — 멘델 평형이 눈앞에서 일어난다.
-     2주차 «마을의 비밀» 겸형적혈구와 똑같은 이야기다. */
+     이게 없으면 학생이 잡종을 고를 이유가 없어 멘델이 게임에서 사라진다.
+     이 사실도 학생에게 알려 주지 않는다. 여러 번 낳아 보고 알아내야 한다. */
   var HET = { water: 14 };
 
-  /* ── 바이옴 8종 ───────────────────────────────────────────────
+  /* ── 바이옴 ───────────────────────────────────────────────────
      왼→오른쪽으로 더워지고, 위→아래로 습해진다.
+     바다(sea)는 아주 습한 쪽 끝에 있다 — 비가 계속 늘면 저절로 나타나고,
+     «대지 침강» 사건으로 한꺼번에 생기기도 한다.
+
      fav = 이 구역에서 유리한 겉모습 (1=우성 쪽, 0=열성 쪽)
-     w   = 그 형질의 중요도 (안 적으면 1) */
+     w   = 그 형질의 중요도 (안 적으면 1)
+     ★ 이 표는 학생에게 절대 보여 주지 않는다 ★ */
   var BIOMES = [
     { key:'snow',   name:'눈 덮인 곳',   emoji:'❄️', t:0.05, m:0.15, bg:'#cfe6ff', ink:'#123',
-      fav:{ fur:1, color:0, water:0, arm:0 },              w:{ fur:2, color:2 } },
+      fav:{ fur:1, color:0, water:0, arm:0, life:1, fec:0 },        w:{ fur:2, color:2 } },
     { key:'tundra', name:'툰드라',       emoji:'🌫️', t:0.20, m:0.55, bg:'#b7c4cd', ink:'#123',
-      fav:{ fur:1, color:0, tall:0, leg:1 },               w:{ fur:1.5 } },
+      fav:{ fur:1, color:0, tall:0, leg:1, life:1 },                w:{ fur:1.5 } },
     { key:'taiga',  name:'침엽수림',     emoji:'🌲', t:0.38, m:0.82, bg:'#2f5d43', ink:'#eaffe9',
-      fav:{ tall:1, arm:1, grip:1, color:1 },              w:{ arm:1.5 } },
+      fav:{ tall:1, arm:1, grip:1, color:1, tox:1 },                w:{ arm:1.5 } },
     { key:'grass',  name:'초원',         emoji:'🌾', t:0.52, m:0.22, bg:'#bcc96a', ink:'#1a1a00',
-      fav:{ leg:1, eye:1, tall:1, color:0, fur:0 },        w:{ leg:2 } },
+      fav:{ leg:1, eye:1, tall:1, color:0, fur:0, fec:1 },          w:{ leg:2 } },
     { key:'forest', name:'초록 숲·천적', emoji:'🐾', t:0.58, m:0.68, bg:'#2e7d4f', ink:'#eaffe9',
-      fav:{ color:1, eye:1, leg:1, arm:1, tall:0 },        w:{ color:2, eye:1.5 } },
+      fav:{ color:1, eye:1, leg:1, arm:1, tall:0, fec:1 },          w:{ color:2, eye:1.5 } },
     { key:'rock',   name:'바위산',       emoji:'🪨', t:0.48, m:0.38, bg:'#8a8f9a', ink:'#111',
-      fav:{ grip:1, leg:1, color:1, water:0 },             w:{ grip:2 } },
+      fav:{ grip:1, leg:1, color:1, water:0, tox:1, life:1 },       w:{ grip:2 } },
     { key:'jungle', name:'높은 나무숲',  emoji:'🌴', t:0.80, m:0.80, bg:'#3a6b2f', ink:'#eaffe9',
-      fav:{ tall:1, arm:1, grip:1, eye:1, fur:0 },         w:{ tall:2, arm:1.5 } },
+      fav:{ tall:1, arm:1, grip:1, eye:1, fur:0, fec:1 },           w:{ tall:2, arm:1.5 } },
     { key:'desert', name:'더운 사막',    emoji:'🏜️', t:0.95, m:0.10, bg:'#e3c47e', ink:'#3a2600',
-      fav:{ water:1, fur:0, color:0, eye:0, leg:0 },       w:{ water:2, fur:1.5 } }
+      fav:{ water:1, fur:0, color:0, eye:0, leg:0, heat:1, fec:0 }, w:{ water:2, heat:1.5 } },
+    /* 바다 — 아주 습한 쪽. 헤엄치지 못하면 못 산다 */
+    { key:'sea',    name:'바다',         emoji:'🌊', t:0.55, m:1.28, bg:'#2f7fb5', ink:'#eaf6ff',
+      fav:{ fin:1, leg:0, tall:0, fur:0, grip:0, tox:1 },           w:{ fin:3, leg:1.5 } }
+  ];
+
+  /* ══ 재해 ══════════════════════════════════════════════════════
+     세대마다 낮은 확률로 한 구역 일대를 덮친다.
+     사건마다 «살아남게 해 주는 형질» 이 다르다. 이것도 알려 주지 않는다.
+
+     기본생존 = 아무 형질도 안 맞을 때의 생존 확률
+     살아남는 = 맞으면 생존 확률이 오르는 형질 (1=우성 쪽, 0=열성 쪽)
+     지형     = 사건이 끝난 뒤 그 칸이 무엇으로 바뀌는가 (null 이면 그대로) */
+  var EVENTS = [
+    { k:'volcano', n:'화산 폭발', emoji:'🌋', 범위:2, 기본생존:0.15,
+      살아남는:{ heat:1, tox:1, fur:0 }, w:{ heat:3, tox:1.5 }, 지형:'rock',
+      말:'뜨거운 재가 하늘을 덮었습니다' },
+    { k:'meteor',  n:'운석 충돌', emoji:'☄️', 범위:3, 기본생존:0.12,
+      살아남는:{ tox:1, grip:1, tall:0 }, w:{ tox:2.5, tall:1.5 }, 지형:null,
+      말:'하늘에서 돌이 떨어져 먼지가 뒤덮었습니다' },
+    { k:'quake',   n:'지진',      emoji:'🌎', 범위:4, 기본생존:0.30,
+      살아남는:{ leg:1, tall:0, grip:1 }, w:{ leg:2.5 }, 지형:null,
+      말:'땅이 흔들려 서 있기가 힘듭니다' },
+    { k:'sink',    n:'대지 침강', emoji:'🌊', 범위:3, 기본생존:0.08,
+      살아남는:{ fin:1, water:1 }, w:{ fin:4 }, 지형:'sea',
+      말:'땅이 가라앉아 바다가 되었습니다' },
+    { k:'rise',    n:'대지 융기', emoji:'⛰️', 범위:3, 기본생존:0.35,
+      살아남는:{ leg:1, grip:1, fin:0 }, w:{ grip:2 }, 지형:'rise',
+      말:'바다가 솟아올라 마른 땅이 되었습니다' }
   ];
 
   var PHASES = ['setup', 'survive', 'move', 'breed', 'next', 'env'];
@@ -81,36 +117,45 @@
   function 기본설정() {
     return {
       /* 생존 확률 = base + 적응도/100 × span
-         적응도 0 → 20% · 50 → 50% · 100 → 80%
-         «적응도가 곧 살아남을 확률» 이라 설명하기 쉽다.
-         올리면 개체가 상한에 눌러붙어 죽음이 의미를 잃고, 내리면 개체군이 무너진다. */
+         적응도 0 → 20% · 50 → 50% · 100 → 80% */
       base:0.20, span:0.60,
 
-      /* 수명의 맞바꾸기
-           짧음 : 한 세대만 살지만 한 번에 자손 3마리
-           긺   : 자손 2마리 + 생존 8%p 손해, 대신 한 세대 더 산다
-         생존 확률만 깎는 방식(-22%p)도 재 봤는데 편차가 너무 커서
-         한 판은 수명 유전자가 아예 사라졌다. 지금 값이 가장 안정적이다. */
-      lifeCost:0.08, lifeExtra:1, kids:3, lifeKids:2,
+      /* 수명 — 오래 사는 대신 생존 판정에서 손해를 본다.
+         한 세대를 더 살면 교배를 두 번 하므로 이득이 아주 크다.
+         값은 시뮬레이터로 «대립유전자 빈도가 0.5 근처» 가 되게 맞췄다. */
+      /* 12세대·12명·6회로 맞춘 값.
+         0.14 → 수명 63·개체 147   ·   0.17 → 수명 64·개체 131(최소 69)
+         0.20 → 수명 53·개체  87   ·   0.26 → 수명 52·개체  47(너무 얇다)
+         0.17 이 «수명이 정답이 되지도, 사라지지도 않으면서» 개체군이 튼튼했다 */
+      lifeCost:0.17, lifeExtra:1,
+
+      /* 번식력 — 자손은 2마리 아니면 4마리.
+         4마리가 나올 확률이 유전자형에 따라 다르다 (우열이 아니라 «쌓인다»)
+           rr 10%  ·  Rr 20%  ·  RR 30% */
+      kid2:2, kid4:4, fec0:0.10, fec1:0.20, fec2:0.30,
 
       inbreed:1,       // 내 개체끼리 교배하면 자손이 이만큼 준다 (근친약세)
-      cellCap:10,      // 한 구역이 넉넉히 먹여 살리는 수
-      crowd:0.02,      // 넘으면 한 마리당 깎이는 생존 확률
+      cellCap:14,      // 한 구역이 넉넉히 먹여 살리는 수
+      crowd:0.015,     // 넘으면 한 마리당 깎이는 생존 확률
       rescue:2,        // 전멸한 학생에게 보내는 이주민
       mut:0.02,        // 유전자 하나가 돌연변이할 확률
       cap:16,          // 학생 한 명의 개체 상한
       start:10,        // 시작 개체 수
       moveSec:120, breedSec:240,
-      autoScope:'zone',// 시간 초과 자동 교배 : zone=같은 구역만 · near=인접까지
-      shift:0.12       // 환경이 한 번에 움직이는 폭
+      autoScope:'zone',
+      shift:0.12,      // 환경이 한 번에 움직이는 폭
+      eventRate:0.45   // 세대마다 재해가 일어날 확률
     };
   }
 
   /* ── 유전자 읽기 ── */
   function 자리(key) { for (var i=0;i<NG;i++) if (GENES[i].k===key) return i; return -1; }
   function 표현형(geno, key) { var i=자리(key); return i>=0 && geno.charAt(i)>='1' ? 1 : 0; }
+  /* 겉모습 — «보이는» 형질만 내보낸다. 숨은 형질은 여기 들어가지 않는다 */
   function 표현형문자열(geno) {
-    var s=''; for (var i=0;i<NG;i++) s += (geno.charAt(i)>='1' ? '1':'0'); return s;
+    var s='';
+    for (var i=0;i<NG;i++) if (GENES[i].보임) s += (geno.charAt(i)>='1' ? '1':'0');
+    return s;
   }
   function 유전자표기(geno, i) {
     var G=GENES[i], S=G.s.toUpperCase(), s=G.s.toLowerCase(), v=+geno.charAt(i);
@@ -133,10 +178,21 @@
     for (var i=0;i<BIOMES.length;i++) if (BIOMES[i].key===key) return BIOMES[i];
     return BIOMES[0];
   }
-  function 보드만들기(env) {
+  /* 기후로 판을 만들고, 재해로 바뀐 칸(terrain)을 덮어씌운다.
+     재해로 바다가 된 칸은 기후가 바뀌어도 바다로 남는다 */
+  function 보드만들기(env, terrain) {
     var g=[];
     for (var r=0;r<5;r++) { g[r]=[];
-      for (var c=0;c<5;c++) g[r][c] = 가까운바이옴(c/4+(env.dt||0), r/4+(env.dm||0)).key;
+      for (var c=0;c<5;c++) {
+        var k = 가까운바이옴(c/4+(env.dt||0), r/4+(env.dm||0)).key;
+        if (terrain) {
+          var o = terrain[r+','+c];
+          if (o === 'sea') k = 'sea';
+          else if (o === 'rise' && k === 'sea') k = 'rock';   // 융기 — 바다가 마른 땅으로
+          else if (o) k = o;
+        }
+        g[r][c]=k;
+      }
     }
     return g;
   }
@@ -148,14 +204,13 @@
       var w=(b.w && b.w[k]) || 1;
       s += (표현형(geno,k)===b.fav[k] ? 12 : -12) * w;
     }
-    for (var hk in HET) {           // 잡종 강세
+    for (var hk in HET) {
       var i=자리(hk);
       if (i>=0 && geno.charAt(i)==='1') s += HET[hk];
     }
     return Math.max(0, Math.min(100, Math.round(s)));
   }
 
-  /* 붐빔은 밖에서 넣어 준다 — 한 칸에 몇 마리가 있는지는 판 전체를 봐야 안다 */
   function 생존확률(geno, biomeKey, st, 넘침) {
     var p = st.base + (적응도(geno,biomeKey)/100) * st.span;
     if (표현형(geno,'life')===1) p -= st.lifeCost;
@@ -174,7 +229,17 @@
     }
     return out;
   }
-  function 자손수(geno, st) { return 표현형(geno,'life')===1 ? st.lifeKids : st.kids; }
+
+  /* 자손 수 — 2 아니면 4.
+     번식력은 «우열» 이 아니라 대립유전자가 쌓이는 만큼 확률이 오른다.
+     그래서 잡종(Rr)도 순종열성(rr)보다 낫다 — 우열의 법칙과 다른 유전 방식이다 */
+  function 넷확률(geno, st) {
+    var v = +geno.charAt(자리('fec'));
+    return v===2 ? st.fec2 : v===1 ? st.fec1 : st.fec0;
+  }
+  function 자손수(geno, st) {
+    return Math.random() < 넷확률(geno, st) ? st.kid4 : st.kid2;
+  }
 
   /* ── 환경 변화 ── */
   var 변화목록 = [
@@ -188,14 +253,75 @@
     for (var i=0;i<변화목록.length;i++) if (변화목록[i].k===k) return 변화목록[i];
     return null;
   }
-  function 무작위변화() { return 변화목록[Math.floor(Math.random()*4)]; }   // keep 은 손으로만
+  function 무작위변화() { return 변화목록[Math.floor(Math.random()*4)]; }
 
-  /* 기후를 옮긴다. ±0.36 을 넘기면 판이 거의 한 지형이 된다(정글 13/25) */
   function 환경적용(env, 변화, st) {
     var lim=0.36, s=st.shift;
     return {
       dt: Math.max(-lim, Math.min(lim, (env.dt||0) + 변화.dt*s)),
       dm: Math.max(-lim, Math.min(lim, (env.dm||0) + 변화.dm*s))
+    };
+  }
+
+  /* ══ 재해 ══════════════════════════════════════════════════════
+     한 칸을 골라 그 둘레(범위)까지 덮친다.
+     그 안의 개체는 «형질에 따라» 살아남는다. 지형이 바뀌기도 한다. */
+  function 재해생존확률(geno, ev) {
+    var p = ev.기본생존;
+    for (var k in ev.살아남는) {
+      var w = (ev.w && ev.w[k]) || 1;
+      if (표현형(geno,k) === ev.살아남는[k]) p += 0.11 * w;
+    }
+    return Math.max(0.02, Math.min(0.96, p));
+  }
+
+  function 무작위재해() { return EVENTS[Math.floor(Math.random()*EVENTS.length)]; }
+  function 재해찾기(k) {
+    for (var i=0;i<EVENTS.length;i++) if (EVENTS[i].k===k) return EVENTS[i];
+    return null;
+  }
+
+  /* 재해를 일으킨다. 어디를 덮칠지·누가 죽을지·지형이 어떻게 바뀔지 돌려준다 */
+  function 재해발생(board, aliens, terrain, ev, 중심) {
+    ev = ev || 무작위재해();
+    var cr = 중심 ? 중심.r : Math.floor(Math.random()*5);
+    var cc = 중심 ? 중심.c : Math.floor(Math.random()*5);
+
+    // 중심에서 가까운 순으로 범위만큼 고른다
+    var 후보=[], r, c;
+    for (r=0;r<5;r++) for (c=0;c<5;c++)
+      후보.push({ r:r, c:c, d:Math.max(Math.abs(r-cr), Math.abs(c-cc)) });
+    후보.sort(function (a,b) { return a.d - b.d; });
+    var 칸들 = 후보.slice(0, ev.범위).map(function (x) { return { r:x.r, c:x.c }; });
+
+    // 침강은 바다가 아닌 곳만, 융기는 바다인 곳만 뜻이 있다
+    if (ev.k === 'sink')  칸들 = 칸들.filter(function (x) { return board[x.r][x.c] !== 'sea'; });
+    if (ev.k === 'rise')  칸들 = 칸들.filter(function (x) { return board[x.r][x.c] === 'sea'; });
+    if (!칸들.length) return null;         // 일어날 자리가 없다
+
+    var 안에 = {}, i;
+    for (i=0;i<칸들.length;i++) 안에[칸들[i].r+','+칸들[i].c] = 1;
+
+    var 죽을것=[], 산것=0;
+    for (i=0;i<aliens.length;i++) {
+      var a = aliens[i];
+      if (!a.alive || !안에[a.r+','+a.c]) continue;
+      if (Math.random() < 재해생존확률(a.geno, ev)) 산것++;
+      else 죽을것.push(a.id);
+    }
+
+    var 새terrain = {};
+    for (var kk in (terrain||{})) 새terrain[kk] = terrain[kk];
+    if (ev.지형) for (i=0;i<칸들.length;i++) {
+      var key = 칸들[i].r+','+칸들[i].c;
+      if (ev.지형 === 'rise') delete 새terrain[key];   // 바다 표시를 지운다 = 다시 땅
+      else 새terrain[key] = ev.지형;
+    }
+
+    return {
+      사건:ev.k, 이름:ev.n, emoji:ev.emoji, 말:ev.말,
+      칸들:칸들, 죽을것:죽을것, 살아남음:산것, 죽음:죽을것.length,
+      terrain:새terrain
     };
   }
 
@@ -210,12 +336,8 @@
     return m;
   }
 
-  /* ══════════════════════════════════════════════════════════════
-   *  단계 계산 — 선생님 화면이 부른다
-   *  전부 «받은 것을 고쳐서 돌려주는» 순수 함수다. 서버를 모른다.
-   * ══════════════════════════════════════════════════════════════ */
+  /* ══ 단계 계산 — 선생님 화면이 부른다 ══════════════════════════ */
 
-  /* ① 생존 판정 — 죽을 개체의 id 목록을 돌려준다 */
   function 생존판정(aliens, board, st) {
     var 몰림 = 몰림세기(aliens), 죽음=[], 산것=0;
     var 최다=0, 최다칸='';
@@ -228,21 +350,17 @@
       if (Math.random() < 생존확률(a.geno, board[a.r][a.c], st, 넘침)) 산것++;
       else 죽음.push(a.id);
     }
-    return {
-      단계:'생존 판정', 죽을것:죽음, 살아남음:산것, 죽음:죽음.length,
-      붐빈수:최다, 넉넉한수:st.cellCap, 가장붐빈칸:최다칸
-    };
+    return { 단계:'생존 판정', 죽을것:죽음, 살아남음:산것, 죽음:죽음.length,
+             붐빈수:최다, 넉넉한수:st.cellCap, 가장붐빈칸:최다칸 };
   }
 
-  /* ③ 교배 마감 — 짝을 못 지은 개체를 같은 구역 안에서 무작위로 이어 준다.
-        같은 구역에 상대가 없으면 자손을 남기지 못한다 — 이게 «지리적 격리» 다. */
   function 자동교배(aliens, 이미짝지은, st) {
     var 남은=[], i;
     for (i=0;i<aliens.length;i++) {
       var a=aliens[i];
       if (a.alive && !이미짝지은[a.id]) 남은.push(a);
     }
-    for (i=남은.length-1;i>0;i--) {          // 순서에 따른 유불리를 없앤다
+    for (i=남은.length-1;i>0;i--) {
       var j=Math.floor(Math.random()*(i+1)), t=남은[i]; 남은[i]=남은[j]; 남은[j]=t;
     }
     var 쓴것={}, 짝=[], 실패=0;
@@ -263,14 +381,11 @@
     return { 짝:짝, 성사:짝.length, 실패:실패 };
   }
 
-  /* ④ 세대 교체 — 다음 세대의 개체 목록을 통째로 만들어 돌려준다.
-        어버이는 죽는다. 다만 «수명 긺» 은 lifeExtra 세대만큼 더 산다. */
   function 세대교체(aliens, 짝목록, players, turn, st) {
-    var 새것=[], 자손=0, 사망=0, 장수=0, 구제=0;
+    var 새것=[], 자손=0, 사망=0, 장수=0, 구제=0, 넷쌍=0;
     var 사람별={}, i;
     for (i=0;i<players.length;i++) 사람별[players[i].id] = { p:players[i], list:[] };
 
-    // 살아남는 어버이
     for (i=0;i<aliens.length;i++) {
       var a=aliens[i];
       if (!a.alive) { 사망++; continue; }
@@ -281,20 +396,20 @@
       } else { 사망++; }
     }
 
-    // 자손 — 부모 «각각의 주인» 에게 간다. 그래야 남과 교배할 이유가 생긴다
     for (i=0;i<짝목록.length;i++) {
       var 짝=짝목록[i], A=짝.a, B=짝.b;
       if (짝.same) {
-        // 내 개체끼리 — 한 번만, 그것도 근친약세만큼 적게
-        var n = Math.max(1, Math.round((자손수(A.geno,st)+자손수(B.geno,st))/2) - st.inbreed);
+        var n = Math.max(2, 자손수(A.geno, st) - st.inbreed);
         자손 += _낳기(사람별, A.player, A, B, n, turn, st);
       } else {
-        자손 += _낳기(사람별, A.player, A, B, 자손수(A.geno,st), turn, st);
-        자손 += _낳기(사람별, B.player, B, A, 자손수(B.geno,st), turn, st);
+        var nA = 자손수(A.geno, st), nB = 자손수(B.geno, st);
+        if (nA === st.kid4) 넷쌍++;
+        if (nB === st.kid4) 넷쌍++;
+        자손 += _낳기(사람별, A.player, A, B, nA, turn, st);
+        자손 += _낳기(사람별, B.player, B, A, nB, turn, st);
       }
     }
 
-    // 상한을 넘으면 무작위로 줄이고, 한 마리도 없으면 이주민을 보낸다
     for (var pid in 사람별) {
       var 통2=사람별[pid], L=통2.list;
       if (L.length > st.cap) {
@@ -312,7 +427,7 @@
       새것 = 새것.concat(L);
     }
     return { 단계:'세대 교체', 개체:새것, 세대:turn+1,
-             자손:자손, 사망:사망, 장수생존:장수, 구제:구제 };
+             자손:자손, 사망:사망, 장수생존:장수, 구제:구제, 네마리:넷쌍 };
   }
 
   function _낳기(사람별, pid, 나, 짝, n, turn, st) {
@@ -328,28 +443,41 @@
     return 만듦;
   }
 
-  /* ── 세대별 형질 빈도 (그래프 재료) ── */
+  /* ── 세대별 형질 빈도 (그래프 재료) ──
+     대립유전자 빈도로 잰다 — 겉모습보다 유전자 풀의 변화를 잘 보여 준다 */
   function 빈도(aliens) {
-    var n=0, cnt={}, i;
-    for (i=0;i<NG;i++) cnt[GENES[i].k]=0;
+    var n=0, dom={}, i;
+    for (i=0;i<NG;i++) dom[GENES[i].k]=0;
     for (i=0;i<aliens.length;i++) {
       var a=aliens[i];
       if (!a.alive) continue;
       n++;
-      for (var k=0;k<NG;k++) if (표현형(a.geno, GENES[k].k)===1) cnt[GENES[k].k]++;
+      for (var k=0;k<NG;k++) dom[GENES[k].k] += +a.geno.charAt(k);
     }
     var f={};
-    for (i=0;i<NG;i++) f[GENES[i].k] = n ? Math.round(cnt[GENES[i].k]/n*100) : 0;
+    for (i=0;i<NG;i++) f[GENES[i].k] = n ? Math.round(dom[GENES[i].k]/(n*2)*100) : 0;
     return { n:n, f:f };
   }
 
+  /* 구역별 유전자 풀 — 빔 화면이 쓴다 */
+  function 구역빈도(aliens, r, c) {
+    var 안=[];
+    for (var i=0;i<aliens.length;i++) {
+      var a=aliens[i];
+      if (a.alive && a.r===r && a.c===c) 안.push(a);
+    }
+    return 빈도(안);
+  }
+
   전역.RULES = {
-    GENES:GENES, NG:NG, BIOMES:BIOMES, HET:HET, PHASES:PHASES, PHASE_NAME:PHASE_NAME,
+    GENES:GENES, NG:NG, 보이는수:보이는수, BIOMES:BIOMES, HET:HET, EVENTS:EVENTS,
+    PHASES:PHASES, PHASE_NAME:PHASE_NAME,
     기본설정:기본설정, 자리:자리, 표현형:표현형, 표현형문자열:표현형문자열,
     유전자표기:유전자표기, 무작위유전자:무작위유전자,
     바이옴:바이옴, 보드만들기:보드만들기, 적응도:적응도, 생존확률:생존확률,
-    자손유전자:자손유전자, 자손수:자손수, 몰림세기:몰림세기,
+    자손유전자:자손유전자, 자손수:자손수, 넷확률:넷확률, 몰림세기:몰림세기,
     변화목록:변화목록, 변화찾기:변화찾기, 무작위변화:무작위변화, 환경적용:환경적용,
-    생존판정:생존판정, 자동교배:자동교배, 세대교체:세대교체, 빈도:빈도
+    무작위재해:무작위재해, 재해찾기:재해찾기, 재해발생:재해발생, 재해생존확률:재해생존확률,
+    생존판정:생존판정, 자동교배:자동교배, 세대교체:세대교체, 빈도:빈도, 구역빈도:구역빈도
   };
 })(window);

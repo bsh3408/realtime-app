@@ -65,7 +65,7 @@
  .res b{color:var(--accent2)}
  .res .big{font-size:26px;font-weight:800;color:var(--accent2);line-height:1.2}
 
- .sparks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ .sparks{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
  .sp1{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px}
  .sp1 .t{font-size:11px;color:var(--sub);font-weight:700;display:flex;justify-content:space-between}
  .sp1 .t b{color:var(--accent2);font-family:ui-monospace,monospace}
@@ -123,7 +123,7 @@
       </div>
 
       <div class="panel">
-        <div class="plabel">세대별 형질 — 우성 겉모습을 가진 개체의 비율(%)</div>
+        <div class="plabel">세대별 유전자 풀 — 우성 대립유전자의 비율(%) · 🔒는 겉모습에 안 드러나는 형질</div>
         <div class="sparks" id="sparks"></div>
         <div class="msg">선이 올라가는 형질 = 지금 환경이 <b style="color:var(--accent)">고르고 있는</b> 형질입니다.
           환경을 바꾸면 방향이 꺾이는 것을 보여 주세요.</div>
@@ -165,10 +165,16 @@
       </div>
 
       <div class="panel">
-        <details>
-          <summary>구역별 유리한 형질 (학생에게 보여 줄 표)</summary>
-          <div class="favtb" id="favtb" style="margin-top:8px"></div>
-        </details>
+        <div class="plabel">재해를 직접 일으키기 — 극적인 순간을 만들 때</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="sm" data-dis="volcano">🌋 화산 폭발</button>
+          <button class="sm" data-dis="meteor">☄️ 운석 충돌</button>
+          <button class="sm" data-dis="quake">🌎 지진</button>
+          <button class="sm" data-dis="sink">🌊 대지 침강</button>
+          <button class="sm" data-dis="rise">⛰️ 대지 융기</button>
+        </div>
+        <div class="msg">재해마다 <b>살아남게 해 주는 형질</b>이 다릅니다.
+          무엇이 살아남았는지 학생에게 묻고, 답은 알려 주지 마세요.</div>
       </div>
 
       <div class="panel">
@@ -214,6 +220,7 @@
 
 <script src="../../shared/config.js"></script>
 <script src="rules.js"></script>
+<script src="pix.js"></script>
 <script src="net.js"></script>
 <script>
 'use strict';
@@ -227,56 +234,7 @@ let GENES=[], BIOMES=[], BIOME={}, T=null;
 const biome = k => BIOME[k]||BIOMES[0];
 const CO=(r,c)=>String.fromCharCode(65+r)+(c+1);
 
-/* ── 픽셀 렌더러 (학생 화면과 같은 규칙) ── */
-const W=120,H=128;
-const DARK={lite:'#4fa87c',mid:'#2f8055',dark:'#1c5738'};
-const LIGHT={lite:'#fff4dc',mid:'#ecd6a4',dark:'#c4a970'};
-const OUT='#12203a',FUR='#fbfff2',WHITE='#fff',PUP='#101a30';
-let buf,solid; const ix=(x,y)=>y*W+x;
-function rst(){buf=new Array(W*H).fill(null);solid=new Array(W*H).fill(false);}
-function px(x,y,c,m){x|=0;y|=0;if(x<0||y<0||x>=W||y>=H)return;buf[ix(x,y)]=c;if(m)solid[ix(x,y)]=true;}
-function isS(x,y){return x>=0&&y>=0&&x<W&&y<H&&solid[ix(x,y)];}
-function fEl(cx,cy,rx,ry,c,m){for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1)px(cx+x,cy+y,c,m);}
-function shEl(cx,cy,rx,ry,c){for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++)if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1&&isS(cx+x,cy+y))buf[ix(cx+x,cy+y)]=c;}
-function outline(){const a=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(solid[ix(x,y)])continue;
-  if(isS(x-1,y)||isS(x+1,y)||isS(x,y-1)||isS(x,y+1)||isS(x-1,y-1)||isS(x+1,y-1)||isS(x-1,y+1)||isS(x+1,y+1))a.push([x,y]);}
-  a.forEach(([x,y])=>buf[ix(x,y)]=OUT);}
-function buildPix(ph){
-  const P=i=>ph.charAt(i)==='1';
-  rst(); const sk=P(1)?DARK:LIGHT, cx=60, bottom=112;
-  const bodyRy=P(4)?36:25, bodyRx=30, bodyCy=bottom-bodyRy;
-  if(P(0)){const N=22;for(let i=0;i<N;i++){const a=-Math.PI/2+i/(N-1)*Math.PI*2*0.92;
-    fEl((cx+Math.cos(a)*(bodyRx-1))|0,(bodyCy+Math.sin(a)*(bodyRy-1))|0,7,7,FUR,true);}}
-  const legN=P(3)?6:2, spread=bodyRx*1.5;
-  for(let i=0;i<legN;i++){const fx=(cx-spread/2+spread*i/(legN-1))|0;
-    for(let y=0;y<9;y++)for(let x=-3;x<=3;x++)px(fx+x,bottom-3+y,sk.mid,true);
-    const fw=P(6)?6:3;fEl(fx,bottom+6,fw,3,sk.dark,true);
-    if(P(6))for(let k=-1;k<=1;k++)px(fx+k*fw,bottom+9,OUT,true);}
-  if(P(7)){for(let k=-1;k<=1;k+=2){const ax=cx+k*(bodyRx-2);
-    for(let t=0;t<10;t++)px((ax+k*t*0.5)|0,(bodyCy+4+t*0.6)|0,sk.mid,true);
-    fEl((ax+k*5)|0,(bodyCy+11)|0,3,3,sk.mid,true);}}
-  fEl(cx,bodyCy,bodyRx,bodyRy,sk.mid,true);
-  shEl(cx,(bodyCy+bodyRy*0.55)|0,(bodyRx*0.9)|0,(bodyRy*0.4)|0,sk.dark);
-  if(P(5))fEl(cx,(bodyCy+bodyRy*0.42)|0,16,13,sk.lite,true);
-  outline();
-  const eR=P(2)?10:5, ey=(bodyCy-bodyRy*0.08)|0, es=Math.min(2*eR*2.1,bodyRx*1.6);
-  for(let i=0;i<2;i++){const ex=(cx-es/2+es*i)|0;
-    fEl(ex,ey,eR+1,eR+2,OUT,false);fEl(ex,ey,eR,eR+1,WHITE,false);
-    fEl(ex,(ey+eR*0.35)|0,(eR*0.62)|0,(eR*0.72)|0,PUP,false);px((ex-eR*0.3)|0,(ey-eR*0.2)|0,WHITE,false);}
-  {const my=(ey+eR+4)|0;for(let x=-3;x<=3;x++)px(cx+x,my+(Math.abs(x)===3?-1:0),OUT,false);}
-  const at=(bodyCy-bodyRy)|0, aL=P(8)?17:9;
-  for(let k=-1;k<=1;k+=2){const bx=cx+k*10;
-    for(let t=0;t<aL;t++)px((bx+k*t*0.4)|0,at-t,OUT,false);
-    fEl((bx+k*(aL*0.4))|0,at-aL-2,3,3,sk.mid,false);}
-}
-const off=document.createElement('canvas'); off.width=W; off.height=H;
-const octx=off.getContext('2d'); const cache={};
-function sprite(ph){
-  if(cache[ph])return cache[ph];
-  buildPix(ph); octx.clearRect(0,0,W,H);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=buf[ix(x,y)];if(c){octx.fillStyle=c;octx.fillRect(x,y,1,1);}}
-  return cache[ph]=off.toDataURL();
-}
+/* 픽셀 렌더러는 pix.js 가 올려 준다 */
 
 /* 학생마다 색 하나 */
 const hues={};
@@ -297,7 +255,6 @@ async function start(){
   const r=await RUN('교사판',CODE).catch(()=>null);
   if(!r||!r.ok){ $('#gateMsg').innerHTML='<div class="msg">코드가 다릅니다.</div>'; return; }
   $('#gate').classList.add('hide'); $('#main').classList.remove('hide');
-  buildFav();
   T=r; paint(); fillCfg();
   setInterval(poll, 3000);
   setInterval(()=>{ if(T&&T.endAt) paintTimer(); }, 1000);
@@ -395,7 +352,13 @@ function paintResult(){
      +(R.구제 ? '<br><span style="color:var(--rec)">전멸한 학생 '+R.구제+'명에게 이주민을 보냈습니다</span>':'')+'</div>';
   }else if(R.단계==='환경 변화'){
     h='<div class="res"><span class="big">'+R.설명+'</span><br>'
-     +'어제 유리하던 형질이 오늘은 불리할 수 있습니다. 학생들에게 적응도를 다시 보라고 하세요.</div>';
+     +'어제 유리하던 형질이 오늘은 불리할 수 있습니다.'
+     +(R.재해 ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--accent2)">'
+        +'<span class="big">'+R.재해.emoji+' '+R.재해.이름+'</span><br>'+R.재해.말+'<br>'
+        +'덮친 구역 '+R.재해.칸들.map(x=>CO(x.r,x.c)).join(' · ')
+        +' — <b>'+R.재해.살아남음+'마리 생존 · '+R.재해.죽음+'마리 사망</b><br>'
+        +'<span style="color:var(--sub)">무엇을 가진 개체가 살아남았는지 물어보세요</span></div>' : '')
+     +'</div>';
   }
   box.innerHTML=h;
 }
@@ -422,7 +385,7 @@ function paintSparks(){
         return (i?'L':'M')+x.toFixed(1)+','+y.toFixed(1);
       }).join(' ');
     }
-    return '<div class="sp1"><div class="t"><span>'+G.n+' · '+G.d+'</span><b>'+last+'%</b></div>'
+    return '<div class="sp1"><div class="t"><span>'+(G.보임?'':'🔒 ')+G.n+'</span><b>'+last+'%</b></div>'
       +'<svg viewBox="0 0 100 38" preserveAspectRatio="none">'
       +'<line x1="0" y1="19" x2="100" y2="19" stroke="#28324f" stroke-width="1"/>'
       +(path?'<path d="'+path+'" fill="none" stroke="#7cf0c8" stroke-width="2" vector-effect="non-scaling-stroke"/>':'')
@@ -432,16 +395,6 @@ function paintSparks(){
 
 function paintLog(){
   $('#log').innerHTML=(T.log||[]).map(l=>'<div><b>'+l.turn+'세대</b> · '+l.m+'</div>').join('') || '기록이 없습니다.';
-}
-
-function buildFav(){
-  $('#favtb').innerHTML=BIOMES.map(b=>{
-    const tags=Object.keys(b.fav).map(k=>{
-      const G=GENES.find(g=>g.k===k);
-      return '<span class="tag good">'+G.n+' : '+(b.fav[k]?G.d:G.r)+'</span>';
-    }).join('');
-    return '<div class="row"><div class="bn">'+b.emoji+' '+b.name+'</div><div>'+tags+'</div></div>';
-  }).join('');
 }
 
 /* ── 조작 ── */
@@ -455,6 +408,13 @@ $('#btnExtend').onclick=async ()=>{ try{ await RUN('시간연장',CODE,60); tRef
 $$('button[data-go]').forEach(b=>b.onclick=async ()=>{
   if(!confirm(b.textContent+' 단계로 갑니다. 계속할까요?')) return;
   try{ const r=await RUN('단계지정',CODE,b.dataset.go); if(!r.ok) alert(r.msg); tRef=Date.now(); await poll(); }catch(e){}
+});
+$$('button[data-dis]').forEach(b=>b.onclick=async ()=>{
+  if(!confirm(b.textContent.trim()+' 을(를) 일으킵니다. 계속할까요?')) return;
+  b.disabled=true;
+  try{ const r=await RUN('재해지정',CODE,b.dataset.dis); if(!r.ok) alert(r.msg); await poll(); }
+  catch(e){ alert('연결이 안 됩니다.'); }
+  finally{ b.disabled=false; }
 });
 $$('button[data-env]').forEach(b=>b.onclick=async ()=>{
   try{ const r=await RUN('환경지정',CODE,b.dataset.env); if(!r.ok) alert(r.msg); await poll(); }catch(e){}

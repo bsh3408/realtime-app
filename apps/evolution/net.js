@@ -141,7 +141,8 @@
   }
   function 보드읽기(g) {
     if (g && g.board && g.board.length === 5) return g.board;
-    return R.보드만들기({ dt:(g&&g.env_dt)||0, dm:(g&&g.env_dm)||0 });
+    var st = 설정읽기(g);
+    return R.보드만들기({ dt:(g&&g.env_dt)||0, dm:(g&&g.env_dm)||0 }, st.terrain);
   }
   var CHEB = function (a,b) { return Math.max(Math.abs(a.r-b.r), Math.abs(a.c-b.c)); };
 
@@ -243,10 +244,34 @@
       var 다음 = R.무작위변화();
       return EVO.rpc('evo_set_state', { p_code:code, p_game:EVO.gameId, p_patch:{
         phase:'env', env_dt:env.dt, env_dm:env.dm,
-        board:R.보드만들기(env), forecast:다음.설명, end_at:'',
+        board:R.보드만들기(env, st.terrain), forecast:다음.설명, end_at:'',
         result:{ 단계:'환경 변화', 설명:변화.설명, env:env, 예보:다음.설명 }
       }}).then(function () { return { ok:true }; },
                function (e) { return { ok:false, msg:e.message }; });
+    },
+
+    /* 선생님이 재해를 직접 일으킨다 — 극적인 순간을 만들 때 */
+    '재해지정': function (code, kind) {
+      return EVO.판읽기().then(function (판) {
+        var g = 판.game, st = 설정읽기(g);
+        var board = 보드읽기(g), aliens = 개체정리(판.aliens);
+        var 재해 = R.재해발생(board, aliens, st.terrain || {}, R.재해찾기(kind), null);
+        if (!재해) return { ok:false, msg:'그 재해가 일어날 자리가 없습니다.' };
+        var st2 = {}; for (var kk in st) st2[kk] = st[kk];
+        st2.terrain = 재해.terrain;
+        return EVO.rpc('evo_mark_dead', { p_code:code, p_game:EVO.gameId, p_ids:재해.죽을것 })
+          .then(function () {
+            return EVO.rpc('evo_set_state', { p_code:code, p_game:EVO.gameId, p_patch:{
+              settings:st2,
+              board:R.보드만들기({ dt:g.env_dt, dm:g.env_dm }, 재해.terrain),
+              result:{ 단계:'환경 변화', 설명:'선생님이 일으킨 재해',
+                       재해:{ 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
+                              칸들:재해.칸들, 살아남음:재해.살아남음, 죽음:재해.죽음 } }
+            }});
+          })
+          .then(function () { return { ok:true }; },
+                function (e) { return { ok:false, msg:e.message }; });
+      });
     },
 
     '설정변경': function (code, patch) {
@@ -284,6 +309,7 @@
     for (i=0;i<판.players.length;i++) if (판.players[i].id === pid) me = 판.players[i];
     if (!me) return { ok:false, msg:'참가 정보가 없습니다.' };
 
+    var 몰림 = R.몰림세기(aliens);
     var 내것=[], 남=[], cells=[];
     for (var r=0;r<5;r++) for (var c=0;c<5;c++) cells.push({ r:r, c:c, n:0, mine:0 });
 
@@ -350,10 +376,23 @@
       settings:{ moveMax:2, breedMax:1, cap:st.cap, start:st.start,
                  base:st.base, span:st.span, lifeCost:st.lifeCost, lifeExtra:st.lifeExtra,
                  kids:st.kids, lifeKids:st.lifeKids, inbreed:st.inbreed,
-                 cellCap:st.cellCap, crowd:st.crowd, het:R.HET },
+                 cellCap:st.cellCap, crowd:st.crowd, kid2:st.kid2, kid4:st.kid4 },
+      /* 잡종 강세(HET)와 구역별 유리 형질(fav)은 일부러 보내지 않는다.
+         학생이 살아남는 것을 보고 스스로 알아내야 한다 */
       me:{ id:String(me.id), name:me.name,
            home: (me.home_r==null ? null : { r:me.home_r, c:me.home_c }),
-           ready:!!me.ready, aliens:내것.map(화면용),
+           ready:!!me.ready,
+           aliens:내것.map(function (a) {
+             var v = 화면용(a);
+             if (a.alive) {
+               // 지금 서 있는 칸에서의 값만. 다른 칸은 알려 주지 않는다
+               var 넘침 = Math.max(0, (몰림[a.r+','+a.c]||0) - st.cellCap);
+               v.fit = R.적응도(a.geno, board[a.r][a.c]);
+               v.sp  = Math.round(R.생존확률(a.geno, board[a.r][a.c], st, 넘침) * 100);
+               v.crowd = 넘침;
+             }
+             return v;
+           }),
            kids:짝수, kidGenos:신생, cross:me.cross_n||0 },
       cells:cells, near:남, inbox:inbox, sent:sent
     };
@@ -408,7 +447,7 @@
       ok:true, seq:g.seq, phase:g.phase, phaseName:R.PHASE_NAME[g.phase]||g.phase,
       turn:g.turn, board:board, env:{ dt:g.env_dt, dm:g.env_dm },
       endAt: g.end_at ? Date.parse(g.end_at) : 0, now:EVO.지금(),
-      forecast: g.forecast || '', settings:st, result:g.result, het:R.HET,
+      forecast: g.forecast || '', settings:st, result:g.result,
       log:[], cells:cells, 학생별:학생별, 총개체:총,
       대기신청:판.requests.length, hist:기록,
       _aliens:aliens, _players:판.players
@@ -436,35 +475,10 @@
       }
 
       if (다음 === 'survive') {
-        /* 유전자 제작에서 막 나왔다면 개체를 «시작 구역 일대» 로 흩는다.
-           안 흩으면 학생 한 명의 10마리가 한 칸에 쌓인다.
-           스무 명이 좋아 보이는 칸으로 몰리면 첫 세대에 몰살한다 —
-           실제로 넷을 한 칸에 두고 돌려 보니 40마리 중 2마리만 살아남았다.
-           흩어 두면 이웃도 생겨서 첫 교배가 바로 된다. */
-        if (g.phase === 'setup') {
-          var 흩은것 = aliens.map(function (a) {
-            return {
-              player:a.player, geno:a.geno,
-              r: Math.max(0, Math.min(4, a.r + (Math.floor(Math.random()*3)-1))),
-              c: Math.max(0, Math.min(4, a.c + (Math.floor(Math.random()*3)-1))),
-              alive:true, born:a.born, age:a.age
-            };
-          });
-          return EVO.rpc('evo_replace_aliens',
-              { p_code:code, p_game:EVO.gameId, p_aliens:흩은것 })
-            .then(function () { return EVO.판읽기(); })
-            .then(function (판2) {
-              var A2 = 개체정리(판2.aliens);
-              var rep0 = R.생존판정(A2, board, st);
-              return EVO.rpc('evo_mark_dead',
-                  { p_code:code, p_game:EVO.gameId, p_ids:rep0.죽을것 })
-                .then(function () {
-                  patch.result = { 단계:'생존 판정', 살아남음:rep0.살아남음, 죽음:rep0.죽음,
-                                   붐빈수:rep0.붐빈수, 넉넉한수:rep0.넉넉한수 };
-                  return 밀기(code, patch);
-                });
-            });
-        }
+        /* 개체를 마음대로 옮기지 않는다.
+           학생이 고른 자리가 곧 그 개체의 자리다 — 그래야 «내 선택» 이 된다.
+           대신 한 칸이 넉넉히 먹여 살리는 수(cellCap)를 열 마리보다 넉넉하게 두어,
+           혼자 열 마리를 몰아 두어도 그것만으로 몰살하지는 않게 했다. */
         var rep = R.생존판정(aliens, board, st);
         return EVO.rpc('evo_mark_dead', { p_code:code, p_game:EVO.gameId, p_ids:rep.죽을것 })
           .then(function () {
@@ -523,10 +537,34 @@
       if (다음 === 'env') {
         var 변화 = g.forecast ? _변화by설명(g.forecast) : R.무작위변화();
         var env = R.환경적용({ dt:g.env_dt, dm:g.env_dm }, 변화, st);
+        var terrain = st.terrain || {};
+        var board2 = R.보드만들기(env, terrain);
+
+        /* 재해 — 세대마다 낮은 확률로 한 구역 일대를 덮친다.
+           사건마다 살아남게 해 주는 형질이 다르다. 그것도 알려 주지 않는다. */
+        var 재해 = null;
+        if (Math.random() < st.eventRate) 재해 = R.재해발생(board2, aliens, terrain, null, null);
+
         var 예보 = R.무작위변화();
         patch.env_dt = env.dt; patch.env_dm = env.dm;
-        patch.board = R.보드만들기(env);
         patch.forecast = 예보.설명;
+
+        if (재해) {
+          terrain = 재해.terrain;
+          board2 = R.보드만들기(env, terrain);
+          var st2 = {}; for (var kk in st) st2[kk] = st[kk];
+          st2.terrain = terrain;
+          patch.settings = st2;
+          patch.board = board2;
+          patch.result = { 단계:'환경 변화', 설명:변화.설명, env:env, 예보:예보.설명,
+                           재해:{ 이름:재해.이름, emoji:재해.emoji, 말:재해.말,
+                                  칸들:재해.칸들, 살아남음:재해.살아남음, 죽음:재해.죽음 } };
+          return EVO.rpc('evo_mark_dead',
+              { p_code:code, p_game:EVO.gameId, p_ids:재해.죽을것 })
+            .then(function () { return 밀기(code, patch); });
+        }
+
+        patch.board = board2;
         patch.result = { 단계:'환경 변화', 설명:변화.설명, env:env, 예보:예보.설명 };
         return 밀기(code, patch);
       }
