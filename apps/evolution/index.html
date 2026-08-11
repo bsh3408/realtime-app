@@ -375,21 +375,53 @@ document.addEventListener('click', e => {
 /* 겉모습을 보고 형질을 읽어 내는 게 이 게임이라, 작으면 게임이 안 된다.
    어느 그림이든 눌러서 크게 볼 수 있게 한다. */
 function 크게(ph, 제목, 부제){
-  const 보이는 = [];
-  GENES.forEach((G,i)=>{ if(G.보임) 보이는.push([G,i]); });
-  const 줄 = 보이는.map(([G,i],k)=>
-    '<div class="gclick" data-gene="'+i+'"><span>'+G.n+' <span style="color:var(--accent2)">ⓘ</span></span>'
-    +'<b>'+(ph.charAt(k)==='1'?G.d:G.r)+'</b></div>').join('');
+  /* 겉모습 열두 자리를 이름 있는 값으로 풀어 준다.
+     1 = 털 있음 … 이 아니라 «밝기 4» 처럼 단계인 자리도 있어서
+     자리마다 다르게 읽어야 한다 */
+  const P = RULES.PH;
+  const 읽기 = (G, i) => {
+    if (G.색) return null;                       // 색 유전자 셋은 «밝기» 하나로 묶어 보여 준다
+    const k = P[G.k];
+    if (k == null) return null;
+    return ph.charAt(k) === '1' ? G.d : G.r;
+  };
+  let 줄 = '<div class="gclick" data-gene="'+GENES.findIndex(x=>x.k==='c1')+'">'
+    + '<span>몸 빛깔 <span style="color:var(--accent2)">ⓘ</span></span>'
+    + '<b>' + ['아주 검음','아주 어두움','어두움','중간','밝음','아주 밝음','새하얌'][+ph.charAt(P['밝기'])||0]
+    + ' (' + ph.charAt(P['밝기']) + '/6)</b></div>';
+  GENES.forEach((G,i)=>{
+    const v = 읽기(G,i);
+    if (v == null) return;
+    줄 += '<div class="gclick" data-gene="'+i+'"><span>'+(G.새형질?'✨ ':'')+G.n
+       + ' <span style="color:var(--accent2)">ⓘ</span></span><b>'+v+'</b></div>';
+  });
   $('#zoomBox').innerHTML =
     '<div class="zoom" id="zoomOv"><div class="card">'
     + '<div style="font-weight:800;font-size:15px;margin-bottom:2px">'+제목+'</div>'
     + (부제 ? '<div style="color:var(--sub);font-size:12px;margin-bottom:8px">'+부제+'</div>' : '')
     + '<img src="'+sprite(ph)+'">'
-    + '<div class="plabel" style="margin:10px 0 0;text-align:left">겉모습에 드러난 형질</div>'
+    + '<div class="plabel" style="margin:10px 0 2px">옆모습 — 걸어 다닐 때</div>'
+    + '<canvas id="zoomWalk" width="224" height="176" '
+      + 'style="width:min(224px,60vw);image-rendering:pixelated;'
+      + 'background:radial-gradient(circle at 50% 60%,#2b4a37,#0c1224);border-radius:12px"></canvas>'
+    + '<div class="plabel" style="margin:10px 0 0;text-align:left">'
+      + '겉모습에 드러난 형질 — <b>줄을 누르면</b> 설명이 나옵니다</div>'
     + '<div class="ph">'+줄+'</div>'
     + '<div class="row" style="margin-top:12px"><button class="primary" id="zoomClose">닫기</button></div>'
     + '</div></div>';
-  const 닫기 = ()=>{ $('#zoomBox').innerHTML=''; };
+
+  /* 옆모습을 실제로 걷게 한다 — 빔 화면에서 보는 모습과 같은 그림이다 */
+  const cv = $('#zoomWalk'), g2 = cv.getContext('2d');
+  g2.imageSmoothingEnabled = false;
+  const 장 = PIX.걷기(ph);
+  let f = 0, 타 = setInterval(()=>{
+    const im = 장[f++ % 4];
+    if(!im || !im.complete || !im.naturalWidth) return;
+    g2.clearRect(0,0,cv.width,cv.height);
+    g2.drawImage(im, 0, 0, cv.width, cv.width*(PIX.SH/PIX.SW));
+  }, 170);
+
+  const 닫기 = ()=>{ clearInterval(타); $('#zoomBox').innerHTML=''; };
   $('#zoomClose').onclick = 닫기;
   $('#zoomOv').onclick = e => { if(e.target.id==='zoomOv') 닫기(); };
 }

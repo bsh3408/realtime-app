@@ -361,9 +361,10 @@ function 팝업그리기(r,c,조용히){
     배우키 = key;
     const cv = $('#scene');
     배우 = list.map((a,i)=>{
-      if(!그림장[a.ph]){ const im=new Image(); im.src=sprite(a.ph); 그림장[a.ph]=im; }
+      // 옆모습 걷기 네 장. 앞모습과 «같은 겉모습 열두 자리» 로 그린다
+      if(!그림장[a.ph]) 그림장[a.ph] = PIX.걷기(a.ph);
       return { ph:a.ph, name:a.name,
-        x: 60 + Math.random()*(cv.width-160),
+        x: 60 + Math.random()*(cv.width-200),
         y: 150 + Math.random()*(cv.height-230),
         dir: Math.random()<0.5?-1:1,
         spd: 0.25 + Math.random()*0.75,
@@ -402,20 +403,25 @@ function 돌리기(){
       if(!a.쉼){
         a.x += a.dir*a.spd; a.ph2 += 0.12;
         if(a.x < 30){ a.x=30; a.dir=1; }
-        if(a.x > cv.width-110){ a.x=cv.width-110; a.dir=-1; }
+        if(a.x > cv.width-130){ a.x=cv.width-130; a.dir=-1; }
         if(Math.random()<0.006){ a.dir*=-1; }
         if(Math.random()<0.004){ a.쉼 = 40+Math.random()*70; }
         if(Math.random()<0.008){ a.y = Math.max(140, Math.min(cv.height-90, a.y+(Math.random()-0.5)*40)); }
       }
-      const im = 그림장[a.ph];
-      if(!im || !im.complete) continue;
-      const s = 78, bob = Math.sin(a.ph2)*3;
+      /* 걷기 — 네 장을 돌려 가며 쓴다. 멈춰 서 있으면 첫 장으로 고정한다 */
+      const 장 = 그림장[a.ph];
+      if(!장) continue;
+      const im = 장[a.쉼 ? 0 : (Math.floor(a.ph2*1.6) % 4)];
+      if(!im || !im.complete || !im.naturalWidth) continue;
+      // 옆모습은 가로가 길다 (112 × 88)
+      const s = 104, sh = s * (PIX.SH / PIX.SW);
+      const bob = a.쉼 ? 0 : Math.sin(a.ph2*2)*1.5;
       ctx.save();
       // 그림자
       ctx.fillStyle='#0004';
-      ctx.beginPath(); ctx.ellipse(a.x+s/2, a.y+s*0.92, s*0.28, s*0.07, 0, 0, 6.3); ctx.fill();
-      if(a.dir<0){ ctx.translate(a.x+s, a.y+bob); ctx.scale(-1,1); ctx.drawImage(im,0,0,s,s*1.07); }
-      else ctx.drawImage(im, a.x, a.y+bob, s, s*1.07);
+      ctx.beginPath(); ctx.ellipse(a.x+s/2, a.y+sh*0.95, s*0.22, s*0.05, 0, 0, 6.3); ctx.fill();
+      if(a.dir<0){ ctx.translate(a.x+s, a.y+bob); ctx.scale(-1,1); ctx.drawImage(im,0,0,s,sh); }
+      else ctx.drawImage(im, a.x, a.y+bob, s, sh);
       ctx.restore();
       // 이름표
       ctx.font='bold 13px system-ui'; ctx.textAlign='center';

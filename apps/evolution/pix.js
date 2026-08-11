@@ -225,6 +225,199 @@
     return cache[ph] = off.toDataURL();
   }
 
-  전역.PIX = { sprite: sprite, W: W, H: H, buildPix: buildPix, 살결: 살결 };
+
+  /* ════════════════════════════════════════════════════════════
+   *  옆모습 — 걸어 다니는 그림
+   *
+   *  앞모습과 «같은 겉모습 열두 자리» 를 읽는다. 두 그림이 어긋나면
+   *  학생이 빔 화면에서 본 개체를 자기 화면에서 못 알아본다.
+   *
+   *  frame 0~3 이 걷기 한 바퀴다. 다리가 번갈아 들리고 몸이 오르내린다.
+   * ════════════════════════════════════════════════════════════ */
+  var SW = 112, SH = 88;
+  var sbuf, ssolid;
+  var six = function (x,y) { return y*SW + x; };
+  function srst(){ sbuf = new Array(SW*SH).fill(null); ssolid = new Array(SW*SH).fill(false); }
+  function spx(x,y,c,m){ x|=0; y|=0; if(x<0||y<0||x>=SW||y>=SH) return;
+                         sbuf[six(x,y)]=c; if(m) ssolid[six(x,y)]=true; }
+  function sisS(x,y){ return x>=0 && y>=0 && x<SW && y<SH && ssolid[six(x,y)]; }
+  function sEl(cx,cy,rx,ry,c,m){
+    for (var y=-ry;y<=ry;y++) for (var x=-rx;x<=rx;x++)
+      if ((x*x)/(rx*rx)+(y*y)/(ry*ry) <= 1) spx(cx+x,cy+y,c,m);
+  }
+  function sShade(cx,cy,rx,ry,c){
+    for (var y=-ry;y<=ry;y++) for (var x=-rx;x<=rx;x++)
+      if ((x*x)/(rx*rx)+(y*y)/(ry*ry) <= 1 && sisS(cx+x,cy+y)) sbuf[six(cx+x,cy+y)]=c;
+  }
+  function sLine(x0,y0,x1,y1,w,c,m){
+    var dx=x1-x0, dy=y1-y0, n=Math.max(Math.abs(dx),Math.abs(dy))||1;
+    for (var i=0;i<=n;i++) sEl((x0+dx*i/n)|0, (y0+dy*i/n)|0, w, w, c, m);
+  }
+  function sOutline(){
+    var a=[];
+    for (var y=0;y<SH;y++) for (var x=0;x<SW;x++) {
+      if (ssolid[six(x,y)]) continue;
+      if (sisS(x-1,y)||sisS(x+1,y)||sisS(x,y-1)||sisS(x,y+1)||
+          sisS(x-1,y-1)||sisS(x+1,y-1)||sisS(x-1,y+1)||sisS(x+1,y+1)) a.push([x,y]);
+    }
+    for (var i=0;i<a.length;i++) sbuf[six(a[i][0],a[i][1])] = OUT;
+  }
+
+  function buildSide(ph, 걸음) {
+    var P  = function (i) { return ph.charAt(i) === '1'; };
+    var 밝 = parseInt(ph.charAt(1), 10); if (isNaN(밝)) 밝 = 3;
+    밝 = Math.max(0, Math.min(살결.length-1, 밝));
+
+    var 털=P(0), 눈큰=P(2), 다리많=P(3), 큼=P(4), 물=P(5), 발톱=P(6),
+         팔=P(7), 더듬이=P(8), 비늘=P(9), 빛깔=P(10), 날개=P(11);
+    var 지느러미 = !팔;
+    if (비늘) 털 = false;
+
+    srst();
+    var sk = 빛깔 ? 빛 : 살결[밝];
+    var 바닥 = 74, cx = 50;
+    var bodyRy = 큼 ? 24 : 17, bodyRx = 27;
+    var 흔들 = Math.round(Math.sin(걸음*2) * 1.4);
+    var bodyCy = 바닥 - bodyRy - 8 + 흔들;
+
+    // 날개 — 몸 뒤에서 퍼덕인다
+    if (날개) {
+      var wf = Math.round(Math.sin(걸음*1.7) * 6);
+      for (var t=0;t<26;t++) {
+        var 폭 = Math.round(15 * Math.sqrt(Math.max(0, 1 - t/26)));
+        for (var q=0;q<폭;q++)
+          spx(cx - 6 - t*0.85, bodyCy - 6 - t*0.55 - wf*(t/26) + q, 날개색, true);
+      }
+      sLine(cx-6, bodyCy-6, (cx-6-26*0.85)|0, (bodyCy-6-26*0.55-wf)|0, 1, sk.dark, true);
+    }
+
+    // 지느러미 — 등에 하나 솟고, 옆(앞쪽)에 노 하나
+    if (지느러미) {
+      var 등x = cx - 4;
+      for (var t2=0;t2<16;t2++) {
+        var w2 = Math.max(1, Math.round((16-t2)*0.7));
+        for (var q2=-w2;q2<=w2;q2++)
+          spx(등x + q2 - t2*0.35, bodyCy - bodyRy - t2 + 3, sk.lite, true);
+      }
+    }
+
+    // 다리 — 앞모습 여섯이면 옆에서 셋, 둘이면 둘
+    var legN = 다리많 ? 3 : 2;
+    for (var i=0;i<legN;i++) {
+      var lx = (cx - bodyRx*0.55 + bodyRx*1.1*i/(legN-1))|0;
+      var 들 = Math.round(Math.max(0, Math.sin(걸음 + i*2.1)) * 5);
+      sLine(lx, bodyCy + bodyRy - 2, lx + 들*0.4, 바닥 - 들, 2, sk.mid, true);
+      var fw = 발톱 ? 5 : 3;
+      sEl((lx + 들*0.4)|0, 바닥 - 들, fw, 2, sk.dark, true);
+      if (발톱) spx((lx + 들*0.4 + fw)|0, 바닥 - 들 + 2, OUT, true);
+    }
+
+    // 몸통 + 머리
+    sEl(cx, bodyCy, bodyRx, bodyRy, sk.mid, true);
+    var hx = (cx + bodyRx*0.62)|0, hy = (bodyCy - bodyRy*0.28)|0, hr = bodyRy - 3;
+    sEl(hx, hy, hr, hr, sk.mid, true);
+    sShade(cx, (bodyCy + bodyRy*0.5)|0, (bodyRx*0.9)|0, (bodyRy*0.5)|0, sk.dark);
+
+    /* 앞다리는 몸통 «위» 에 올린다. 뒤에 그리면 몸통이 통째로 덮어 버려서
+       팔인지 지느러미인지 구별이 안 된다 — 한 유전자로 묶은 뜻이 사라진다 */
+    if (팔) {
+      var sw = Math.round(Math.sin(걸음 + 1) * 5);
+      var shx = (cx + bodyRx*0.28)|0, shy = (bodyCy + bodyRy*0.15)|0;
+      sLine(shx, shy, shx + 9 + sw, shy + 15, 2, sk.dark, true);
+      sEl((shx + 9 + sw)|0, (shy + 18)|0, 4, 3, sk.dark, true);
+    } else {
+      // 옆지느러미 — 노 젓듯 앞뒤로 움직인다
+      var 노 = Math.round(Math.sin(걸음)*4);
+      var px3 = (cx + bodyRx*0.2)|0, py3 = (bodyCy + bodyRy*0.45)|0;
+      for (var t7=0;t7<15;t7++) {
+        var h7 = Math.round(6 * Math.sqrt(Math.max(0, 1 - t7/15)));
+        for (var q7=-h7;q7<=h7;q7++)
+          spx(px3 + t7, py3 + q7 + Math.round(t7*0.5) + 노*(t7/15), sk.lite, true);
+      }
+    }
+
+    // 털
+    if (털) {
+      for (var f=0;f<15;f++) {
+        var a2 = -Math.PI*0.98 + f/14 * Math.PI*1.05;
+        sEl((cx + Math.cos(a2)*(bodyRx-2))|0, (bodyCy + Math.sin(a2)*(bodyRy-1))|0, 5,5, FUR, true);
+      }
+    }
+    // 비늘
+    if (비늘) {
+      for (var ry=-bodyRy+3; ry<bodyRy-2; ry+=5) {
+        var 어긋 = ((ry/5)|0)%2 ? 3 : 0;
+        for (var rx=-bodyRx+2; rx<bodyRx+6; rx+=7) {
+          var sx2 = cx+rx+어긋, sy2 = bodyCy+ry;
+          for (var d0=-2;d0<=2;d0++) {
+            var h0 = 2 - Math.abs(d0);
+            for (var e0=0;e0<=h0;e0++)
+              if (sisS(sx2+d0, sy2+e0)) sbuf[six(sx2+d0, sy2+e0)] = (e0===h0) ? 비늘색 : sk.lite;
+          }
+        }
+      }
+    }
+    // 빛깔
+    if (빛깔) {
+      for (var by=-bodyRy+5; by<bodyRy-3; by+=6) {
+        for (var bx=-bodyRx;bx<=bodyRx+8;bx++) {
+          var yy = bodyCy + by + Math.round(Math.sin(bx*0.24 + 걸음)*2);
+          if (sisS(cx+bx, yy)) sbuf[six(cx+bx, yy)] = (by%12===0) ? 빛.lite : '#ff7ae0';
+        }
+      }
+    }
+    // 물저장 조직 — 배가 불룩하다
+    if (물) sEl((cx-2)|0, (bodyCy + bodyRy*0.45)|0, 13, 8, sk.lite, true);
+
+    sOutline();
+
+    // 눈 — 머리 앞쪽
+    var eR = 눈큰 ? 8 : 4;
+    var ex = (hx + hr*0.4)|0, ey = (hy - hr*0.12)|0;
+    sEl(ex, ey, eR+1, eR+1, OUT, false);
+    sEl(ex, ey, eR, eR, WHITE, false);
+    sEl((ex+1)|0, (ey+1)|0, (eR*0.58)|0, (eR*0.62)|0, PUP, false);
+    spx((ex - eR*0.35)|0, (ey - eR*0.35)|0, WHITE, false);
+    // 입
+    for (var m=0;m<4;m++) spx(ex + eR - 1 + m, ey + eR + 2, OUT, false);
+
+    /* 더듬이 — 머리 위. 1픽셀 선으로 그렸더니 «긁힌 자국» 처럼 보였다.
+       걸을 때 살짝 흔들리게 하되, 굵기를 주어 더듬이로 읽히게 한다 */
+    var aL = 더듬이 ? 16 : 6;
+    var 흔 = Math.sin(걸음*1.5) * (더듬이 ? 2.5 : 0.8);
+    for (var d=0;d<2;d++) {
+      var bx2 = hx - 2 + d*6, by2 = (hy - hr + 1)|0;
+      var tipx = bx2 + 흔 + aL*0.22, tipy = by2 - aL;
+      sLine(bx2, by2, tipx|0, tipy|0, 1, OUT, false);
+      sEl(tipx|0, (tipy-2)|0, 2, 2, 더듬이 ? sk.lite : sk.mid, false);
+    }
+  }
+
+  var soff = document.createElement('canvas');
+  soff.width = SW; soff.height = SH;
+  var sctx = soff.getContext('2d');
+  var scache = {};
+
+  /* 옆모습 한 장. frame 0~3 */
+  function side(ph, frame) {
+    ph = String(ph || ''); frame = ((frame|0) % 4 + 4) % 4;
+    var key = ph + '_' + frame;
+    if (scache[key]) return scache[key];
+    buildSide(ph, frame * Math.PI/2);
+    sctx.clearRect(0,0,SW,SH);
+    for (var y=0;y<SH;y++) for (var x=0;x<SW;x++) {
+      var c = sbuf[six(x,y)];
+      if (c) { sctx.fillStyle = c; sctx.fillRect(x,y,1,1); }
+    }
+    var im = new Image();
+    im.src = soff.toDataURL();
+    scache[key] = im;
+    return im;
+  }
+  /* 걷기 네 장을 한꺼번에 */
+  function 걷기(ph) { return [side(ph,0), side(ph,1), side(ph,2), side(ph,3)]; }
+
+  전역.PIX = { sprite: sprite, W: W, H: H, buildPix: buildPix, 살결: 살결,
+               side: side, 걷기: 걷기, SW: SW, SH: SH };
   전역.sprite = sprite;      // 화면 코드가 예전처럼 sprite() 로 부른다
 })(window);
