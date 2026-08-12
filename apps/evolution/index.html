@@ -158,6 +158,14 @@
  .bornAlive{margin-top:8px;padding:9px 12px;border-radius:11px;font-size:15px;
             background:#0f2a1e;border:1.5px solid var(--accent);color:#a8ffdc;
             animation:disUp .45s .3s both}
+ /* 여러 세대를 한 번에 넘겼을 때 */
+ .ff{margin-top:12px;padding:12px 13px;border-radius:12px;background:#101a2e;
+     border:1.5px solid var(--accent)}
+ .ff .t{font-size:16px;font-weight:800;color:var(--accent);margin-bottom:8px}
+ .ff .bars{display:flex;align-items:flex-end;gap:3px;height:34px;margin-bottom:7px}
+ .ff .bars i{flex:1;background:var(--accent);border-radius:2px 2px 0 0;opacity:.75}
+ .ff .n{font-size:12.5px;line-height:1.55}
+ .ff .n b{color:var(--ink)}
  .fc{background:#2a1f00;border:1px solid var(--accent2);color:var(--accent2);border-radius:9px;
      padding:7px 10px;font-size:12px;margin-top:9px}
  .hide{display:none}
@@ -589,6 +597,30 @@ function 환경팝업(){
     + '<div style="color:var(--sub);font-size:12px">어제 유리하던 형질이 오늘은 불리할 수 있습니다.</div>';
 
   if(바뀜) h += '<div class="big">' + 바뀜 + '</div>';
+
+  /* 선생님이 여러 세대를 한 번에 넘겼다. 그 사이에 무슨 일이 있었는지
+     알려 주지 않으면 «자고 일어나니 개체가 바뀌어 있는» 꼴이 된다 */
+  const F = S.result && S.result.빨리감기;
+  if(F){
+    const 최대 = Math.max(1, ...F.기록.map(x=>x.마리));
+    h += '<div class="ff">'
+      + '<div class="t">⏩ '+F.세대수+'세대가 한 번에 지나갔습니다</div>'
+      + '<div class="bars">'
+      + F.기록.map(x=>'<i style="height:'+Math.max(4, Math.round(x.마리/최대*34))+'px"></i>').join('')
+      + '</div>'
+      + '<div class="n">반 전체 <b>'+F.처음+'</b> → <b>'+F.끝+'</b>마리'
+      + ' · 태어남 <b>'+F.태어남+'</b> · 죽음 <b>'+F.죽음+'</b></div>'
+      + (F.재해.length
+          ? '<div class="n">그 사이에 '+F.재해.map(x=>x.emoji+' <b>'+x.이름+'</b>').join(' · ')+'</div>'
+          : '')
+      + (F.새형질.length
+          ? '<div class="n" style="color:var(--accent2)">없던 형질 — '
+            + F.새형질.map(x=>x.emoji+' <b>'+x.이름+'</b>('+x.누구+')').join(' · ')+'</div>'
+          : '')
+      + '<div class="n" style="color:var(--sub)">그동안 개체들은 저절로 옮겨 다니고 저절로 교배했습니다. '
+      + '지금 내 개체가 어디에 서 있는지부터 확인해 보세요.</div>'
+      + '</div>';
+  }
 
   if(D) h += '<div class="disBig">'
     +'<div class="ico">'+D.emoji+'</div>'

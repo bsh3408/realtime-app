@@ -361,6 +361,124 @@
               function (e) { return { ok:false, msg:e.message }; });
     },
 
+    /* ── 여러 세대를 한 번에 ────────────────────────────────────────
+       학생을 기다리지 않고 이동·교배·생존·환경 변화를 저절로 굴린다.
+       판 전체를 선생님 브라우저에서 한꺼번에 돌리고 «끝난 자리» 만 한 번
+       써넣는다 — 세대마다 서버를 오가면 열 세대에 수십 번 왕복한다.
+
+       이동은 학생 대신 «갈 수 있는 데까지 아무렇게나» 흩어진다.
+       머리를 써서 좋은 칸으로 보내면 그건 학생이 할 일을 대신 해 버리는
+       것이라, 빨리감기로 나온 결과가 «학생이 잘해서» 인지 «저절로» 인지
+       구분이 안 된다. 아무렇게나 두어야 «환경이 고른 것» 만 남는다. */
+    '빨리감기': function (code, 세대수) {
+      var n = Math.max(1, Math.min(20, 세대수|0));
+      return EVO.판읽기().then(function (판) {
+        var g = 판.game;
+        if (!g) return { ok:false, msg:'방이 없습니다.' };
+        if (g.phase === 'lobby' || g.phase === 'setup')
+          return { ok:false, msg:'개체를 다 나눠 준 뒤에 쓸 수 있습니다.' };
+
+        var st = 설정읽기(g);
+        var aliens = 개체정리(판.aliens).filter(function (a) { return a.alive; });
+        if (!aliens.length) return { ok:false, msg:'살아 있는 개체가 없습니다.' };
+
+        var env = { dt:g.env_dt, dm:g.env_dm };
+        var terrain = st.terrain || {};
+        var board = R.보드만들기(env, terrain);
+        var turn = g.turn;
+        var 예보 = g.forecast ? _변화by설명(g.forecast) : R.무작위변화(env, st);
+        var 올재해 = st.nextEvent || null;
+
+        var 이름표 = {}, q;
+        for (q=0;q<판.players.length;q++) 이름표[판.players[q].id] = 판.players[q].name;
+
+        var 기록=[], 재해들=[], 새것들=[], 죽은수=0, 태어난수=0, 출생죽음=0, 씨=0;
+        var 처음마리 = aliens.length;
+
+        for (var t=0; t<n; t++) {
+          var i, a;
+
+          // ① 생존 판정
+          var s1 = R.생존판정(aliens, board, st);
+          var 죽={}; for (i=0;i<s1.죽을것.length;i++) 죽[s1.죽을것[i]]=1;
+          for (i=0;i<aliens.length;i++) if (죽[aliens[i].id]) aliens[i].alive=false;
+          죽은수 += s1.죽음;
+
+          // ② 이동 — 갈 수 있는 만큼 아무렇게나
+          var m = 2;
+          for (i=0;i<aliens.length;i++) {
+            a = aliens[i]; if (!a.alive) continue;
+            a.r = Math.max(0, Math.min(4, a.r + (Math.floor(Math.random()*(2*m+1)) - m)));
+            a.c = Math.max(0, Math.min(4, a.c + (Math.floor(Math.random()*(2*m+1)) - m)));
+          }
+
+          // ③ 교배 — 같은 칸에 있는 것끼리 저절로
+          var 자동 = R.자동교배(aliens, {}, st);
+
+          // ④ 세대 교체 (자손은 태어난 자리의 환경으로 한 번 걸러진다)
+          var rep = R.세대교체(aliens, 자동.짝, 판.players, turn, st, board);
+          turn = rep.세대;
+          태어난수 += rep.자손; 출생죽음 += (rep.출생죽음||0);
+          for (i=0;i<(rep.새형질||[]).length;i++) {
+            var x = rep.새형질[i];
+            새것들.push({ 이름:x.이름, emoji:x.emoji, 세대:turn,
+                          누구:이름표[x.player] || '?' });
+          }
+          aliens = rep.개체.map(function (y) {
+            return { id:'ff'+(++씨), player:y.player, geno:y.geno, r:y.r, c:y.c,
+                     alive:true, born:y.born, age:y.age };
+          });
+
+          // ⑤ 환경 변화 + 재해
+          env = R.환경적용(env, 예보, st);
+          board = R.보드만들기(env, terrain);
+          if (올재해) {
+            var ev = R.재해발생(board, aliens, terrain, R.재해찾기(올재해.k),
+                                { r:올재해.r, c:올재해.c });
+            if (ev) {
+              var d2={}; for (i=0;i<ev.죽을것.length;i++) d2[ev.죽을것[i]]=1;
+              aliens = aliens.filter(function (y) { return !d2[y.id]; });
+              terrain = ev.terrain; board = R.보드만들기(env, terrain);
+              재해들.push({ k:ev.사건, 이름:ev.이름, emoji:ev.emoji,
+                            죽음:ev.죽음, 세대:turn });
+              죽은수 += ev.죽음;
+            }
+          }
+          올재해 = (Math.random() < st.eventRate)
+            ? { k:R.무작위재해().k, r:Math.floor(Math.random()*5), c:Math.floor(Math.random()*5) }
+            : null;
+          예보 = R.무작위변화(env, st);
+          기록.push({ 세대:turn, 마리:aliens.length });
+          if (!aliens.length) break;
+        }
+
+        var st2 = {}; for (var kk in st) st2[kk] = st[kk];
+        st2.terrain = terrain; st2.nextEvent = 올재해;
+
+        var 보낼것 = aliens.map(function (y) {
+          return { player:y.player, geno:y.geno, r:y.r, c:y.c,
+                   alive:true, born:y.born, age:y.age };
+        });
+        return EVO.rpc('evo_replace_aliens',
+            { p_code:code, p_game:EVO.gameId, p_aliens:보낼것 })
+          .then(function () {
+            return EVO.rpc('evo_set_state', { p_code:code, p_game:EVO.gameId, p_patch:{
+              phase:'env', turn:turn, env_dt:env.dt, env_dm:env.dm,
+              board:board, forecast:예보.설명, settings:st2, end_at:'',
+              result:{ 단계:'환경 변화', 설명:n+'세대를 한 번에 넘겼습니다',
+                       env:env, 예보:예보.설명,
+                       빨리감기:{ 세대수:기록.length, 처음:처음마리, 끝:aliens.length,
+                                  태어남:태어난수, 출생죽음:출생죽음, 죽음:죽은수,
+                                  재해:재해들, 새형질:새것들, 기록:기록 } }
+            }});
+          })
+          .then(function () {
+            return { ok:true, 세대:turn, 마리:aliens.length,
+                     재해:재해들.length, 새형질:새것들.length };
+          }, function (e) { return { ok:false, msg:e.message }; });
+      });
+    },
+
     '게임초기화': function (code, 명단도) {
       return EVO.rpc('evo_reset', { p_code:code, p_game:EVO.gameId, p_wipe_players:!!명단도 })
         .then(function () { return { ok:true }; },

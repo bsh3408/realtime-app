@@ -22,6 +22,13 @@
  .top .sp{flex:1}
  .ev{background:rgba(255,107,107,.14);border:1px solid var(--bad);border-radius:12px;
      padding:8px 16px;font-size:15px;font-weight:700}
+ .ffbig{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+        background:rgba(124,240,200,.12);border:1px solid var(--accent);
+        border-radius:12px;padding:7px 15px;font-size:14px}
+ .ffbig .t{font-size:16px;font-weight:800;color:var(--accent)}
+ .ffbig .n b{color:var(--accent2)}
+ .ffbig .bars{display:flex;align-items:flex-end;gap:2px;height:30px}
+ .ffbig .bars i{width:7px;background:var(--accent);border-radius:2px 2px 0 0;opacity:.8}
 
  /* 판은 화면을 다 쓴다 — 뒤에 앉은 학생이 구역 하나하나를 알아봐야 한다.
     유전자 풀 표는 옆에 늘 펼쳐 두지 않고 «🧬 유전자 풀» 단추로 띄운다 */
@@ -152,6 +159,7 @@
     <div class="m">세대<b id="tGen">0</b></div>
     <div class="m">지금<b id="tPhase" style="font-size:19px">—</b></div>
     <div class="m">전체 개체<b id="tPop">0</b></div>
+    <div id="ffBox"></div>
     <div class="sp"></div>
     <button id="poolBtn" style="background:var(--panel2);border:1px solid var(--line);
       color:var(--ink);border-radius:11px;padding:9px 15px;font:inherit;font-size:14px;
@@ -248,6 +256,20 @@ function paint(){
   $('#tPop').textContent = T.총개체;
 
   const R2 = T.result;
+  /* 여러 세대를 한 번에 넘겼으면 그 자취를 판 위에 남긴다 */
+  const F = R2 && R2.빨리감기;
+  $('#ffBox').innerHTML = F
+    ? '<div class="ffbig"><span class="t">⏩ '+F.세대수+'세대가 한 번에 지나갔습니다</span>'
+      + '<span class="n">개체 <b>'+F.처음+'</b> → <b>'+F.끝+'</b>마리 · 태어남 <b>'+F.태어남+'</b>'
+      + ' · 죽음 <b>'+F.죽음+'</b></span>'
+      + '<span class="bars">'
+      + F.기록.map(x=>'<i style="height:'+Math.max(4, Math.round(x.마리/Math.max(1,...F.기록.map(y=>y.마리))*30))+'px"></i>').join('')
+      + '</span>'
+      + (F.재해.length ? '<span class="n">'+F.재해.map(x=>x.emoji+' '+x.이름).join(' · ')+'</span>' : '')
+      + (F.새형질.length ? '<span class="n" style="color:var(--accent2)">✨ '
+          + F.새형질.map(x=>x.emoji+' '+x.이름+'('+x.누구+')').join(' · ')+'</span>' : '')
+      + '</div>'
+    : '';
   $('#evBox').innerHTML = (R2 && R2.재해)
     ? '<div class="ev">'+R2.재해.emoji+' <b>'+R2.재해.이름+'</b> — '+R2.재해.말
       +' &nbsp;<span style="color:var(--bad)">'+R2.재해.죽음+'마리 사망</span></div>'

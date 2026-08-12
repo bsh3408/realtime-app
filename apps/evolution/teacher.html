@@ -157,6 +157,20 @@
       </div>
 
       <div class="panel">
+        <div class="plabel">여러 세대를 한 번에 — 학생을 기다리지 않고 저절로 굴립니다</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <button class="sm" data-ff="3">⏩ 3세대</button>
+          <button class="sm" data-ff="5">⏩ 5세대</button>
+          <button class="sm" data-ff="10">⏩⏩ 10세대</button>
+          <span id="ffMsg" style="font-size:12px;color:var(--sub)"></span>
+        </div>
+        <div class="msg">이동은 <b>갈 수 있는 데까지 아무렇게나</b>, 교배는 같은 칸에 있는 것끼리
+          저절로 일어납니다. 생존 판정·자손 출생 판정·환경 변화·재해도 세대마다 그대로 굴립니다.
+          <b style="color:var(--accent2)">되돌릴 수 없습니다</b> — 수업 전에 판이 어떻게 흘러가는지
+          보거나, 시간이 모자랄 때 뒤를 몰아서 넘길 때 쓰세요.</div>
+      </div>
+
+      <div class="panel">
         <div class="plabel">이번 세대의 상 — 개체 수만으로 겨루면 «적응도 몰빵» 이 정답이 됩니다.
           축을 여러 개 두면 서로 다른 전략이 살아납니다.</div>
         <div id="awards"></div>
@@ -372,6 +386,31 @@ function paintBoard(){
   }
 }
 
+/* 여러 세대를 한 번에 넘긴 결과 — 무슨 일이 있었는지 한 덩어리로 보여 준다.
+   세대별 마릿수를 작은 막대로 그려서 «늘었나 줄었나» 가 먼저 보이게 한다 */
+function 빨리감기표(F){
+  const 최대 = Math.max(1, ...F.기록.map(x=>x.마리));
+  return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--accent2)">'
+    + '<span class="big">⏩ '+F.세대수+'세대를 한 번에 넘겼습니다</span><br>'
+    + '개체 <b>'+F.처음+'</b> → <b>'+F.끝+'</b>마리 &nbsp;·&nbsp; 태어남 <b>'+F.태어남+'</b>'
+    + ' (그 가운데 <b>'+F.출생죽음+'</b>마리는 태어난 자리를 못 견딤) &nbsp;·&nbsp; 죽음 <b>'+F.죽음+'</b>'
+    + '<div style="display:flex;align-items:flex-end;gap:3px;height:38px;margin:9px 0 4px">'
+    + F.기록.map(x=>'<div title="'+x.세대+'세대 '+x.마리+'마리" style="flex:1;background:var(--accent);'
+        + 'border-radius:2px 2px 0 0;height:'+Math.max(3, Math.round(x.마리/최대*38))+'px"></div>').join('')
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--sub)">세대별 전체 개체 수 — '
+    + F.기록.map(x=>x.마리).join(' · ') + '</div>'
+    + (F.재해.length
+        ? '<div style="margin-top:8px">일어난 재해 — '
+          + F.재해.map(x=>x.emoji+' '+x.이름+'('+x.세대+'세대 '+x.죽음+'마리)').join(' · ') + '</div>'
+        : '<div style="margin-top:8px;color:var(--sub)">재해는 없었습니다</div>')
+    + (F.새형질.length
+        ? '<div style="margin-top:6px;color:var(--accent2)">없던 형질 — '
+          + F.새형질.map(x=>x.emoji+' '+x.이름+'('+x.누구+' · '+x.세대+'세대)').join(' · ') + '</div>'
+        : '')
+    + '</div>';
+}
+
 function paintResult(){
   const R=T.result, box=$('#resBox');
   if(!R){ box.innerHTML=''; return; }
@@ -395,6 +434,7 @@ function paintResult(){
         +'덮친 구역 '+R.재해.칸들.map(x=>CO(x.r,x.c)).join(' · ')
         +' — <b>'+R.재해.살아남음+'마리 생존 · '+R.재해.죽음+'마리 사망</b><br>'
         +'<span style="color:var(--sub)">무엇을 가진 개체가 살아남았는지 물어보세요</span></div>' : '')
+     +(R.빨리감기 ? 빨리감기표(R.빨리감기) : '')
      +'</div>';
   }
   box.innerHTML=h;
@@ -494,6 +534,24 @@ $('#btnNext').onclick=async ()=>{
   finally{ $('#btnNext').disabled=false; }
 };
 $('#btnExtend').onclick=async ()=>{ try{ await RUN('시간연장',CODE,60); tRef=Date.now(); await poll(); }catch(e){} };
+
+/* 빨리감기 — 되돌릴 수 없으므로 한 번 묻는다. 도는 동안 단추를 잠근다 */
+$$('button[data-ff]').forEach(b=>b.onclick=async ()=>{
+  const n = +b.dataset.ff;
+  if(!confirm(n+'세대를 한 번에 넘깁니다.\n이동과 교배는 저절로 일어나고, 되돌릴 수 없습니다.\n계속할까요?')) return;
+  const 단추 = $$('button[data-ff]');
+  단추.forEach(x=>x.disabled=true);
+  $('#ffMsg').textContent = n+'세대를 굴리는 중…';
+  try{
+    const r = await RUN('빨리감기', CODE, n);
+    if(!r.ok){ $('#ffMsg').textContent=''; alert(r.msg); }
+    else $('#ffMsg').textContent = r.세대+'세대 · 남은 개체 '+r.마리+'마리'
+      + (r.재해 ? ' · 재해 '+r.재해+'번' : '')
+      + (r.새형질 ? ' · 새 형질 '+r.새형질+'번' : '');
+    tRef=Date.now(); await poll();
+  }catch(e){ $('#ffMsg').textContent=''; alert('연결이 안 됩니다.'); }
+  finally{ 단추.forEach(x=>x.disabled=false); }
+});
 $$('button[data-go]').forEach(b=>b.onclick=async ()=>{
   if(!confirm(b.textContent+' 단계로 갑니다. 계속할까요?')) return;
   try{ const r=await RUN('단계지정',CODE,b.dataset.go); if(!r.ok) alert(r.msg); tRef=Date.now(); await poll(); }catch(e){}
