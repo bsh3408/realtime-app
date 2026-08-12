@@ -89,6 +89,58 @@
  details summary{cursor:pointer;font-size:13px;color:var(--sub);font-weight:700;padding:4px 0}
  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
  label.f{display:block;font-size:11px;color:var(--sub);margin-bottom:3px}
+
+/* ══ 빨리감기 — 행성이 빙글빙글 ═══════════════════════════════════
+   «시간이 빠르게 가고 있다» 를 그림 하나로 말한다.
+   구는 CSS 로 만든다: 얼룩을 가로로 흘려보내면 도는 것처럼 보이고,
+   그 위에 빛과 그늘을 한 겹 덮어야 평평한 원이 공이 된다.
+   살갗은 판의 아홉 구역 색이다 — 도는 것이 «이 행성» 이라는 표시다 */
+ .ffov{position:fixed;inset:0;z-index:150;display:none;
+       align-items:center;justify-content:center;
+       background:radial-gradient(70% 60% at 50% 45%,#132043f2,#050912fa)}
+ .ffov.on{display:flex}
+ .spin{display:flex;flex-direction:column;align-items:center;gap:15px}
+ .orb{position:relative;width:var(--d,150px);height:var(--d,150px)}
+ .orb .stars{position:absolute;inset:-40% -70%;overflow:hidden;border-radius:50%;
+             -webkit-mask:radial-gradient(closest-side,#000 60%,transparent);
+                     mask:radial-gradient(closest-side,#000 60%,transparent)}
+ .orb .stars i{position:absolute;height:2px;border-radius:2px;
+               background:linear-gradient(90deg,transparent,#dbe8ff);
+               animation:ffstreak linear infinite}
+ @keyframes ffstreak{from{transform:translateX(120%)}to{transform:translateX(-320%)}}
+ .orb .ball{position:absolute;inset:0;border-radius:50%;overflow:hidden;
+            box-shadow:0 0 34px #7cf0c82e}
+ .orb .ball::before{content:'';position:absolute;inset:0;
+   background:linear-gradient(180deg,#cfe6ff 0 9%,#b7c4cd 9% 19%,#8a8f9a 19% 30%,
+              #bcc96a 30% 41%,#e3c47e 41% 53%,#2e7d4f 53% 65%,#3a6b2f 65% 76%,
+              #2f5d43 76% 87%,#2f7fb5 87% 100%)}
+ .orb .ball::after{content:'';position:absolute;inset:0;width:300%;
+   background:repeating-linear-gradient(92deg,
+      #ffffff00 0 26px,#ffffff1c 34px 58px,#ffffff00 68px 96px,
+      #0000002e 108px 140px,#ffffff00 152px 186px);
+   filter:blur(2px);animation:ffroll var(--spin,1.4s) linear infinite}
+ @keyframes ffroll{from{transform:translateX(0)}to{transform:translateX(-33.333%)}}
+ .orb .lit{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+   background:radial-gradient(circle at 32% 27%,#ffffff5e 0 6%,#ffffff22 16%,transparent 42%),
+              radial-gradient(circle at 68% 74%,#00000073 0 22%,transparent 62%);
+   box-shadow:inset -16px -14px 34px #000000a6, inset 10px 9px 22px #ffffff1a}
+ .orb .ring{position:absolute;left:-22%;right:-22%;top:44%;height:34%;
+            border:2px solid #ffd36b88;border-radius:50%;
+            transform:rotate(-17deg);animation:ffring 2.4s ease-in-out infinite}
+ @keyframes ffring{0%,100%{opacity:.55;transform:rotate(-17deg) scaleY(1)}
+                   50%{opacity:1;transform:rotate(-17deg) scaleY(1.18)}}
+ .spin .say{text-align:center;color:#eaf0ff}
+ .spin .say b{display:block;font-size:var(--fs,21px);font-weight:800;letter-spacing:-.02em}
+ .spin .say u{display:block;text-decoration:none;font-size:13.5px;color:#9aa6cc;margin-top:4px;
+              font-variant-numeric:tabular-nums}
+ .spin .bar{width:var(--bw,190px);height:5px;border-radius:3px;background:#ffffff1f;overflow:hidden}
+ .spin .bar i{display:block;height:100%;background:#7cf0c8;border-radius:3px;
+              transition:width .4s ease}
+ .spin .bar.idle i{width:38%;animation:ffslide 1.5s ease-in-out infinite}
+ @keyframes ffslide{0%{margin-left:-38%}100%{margin-left:100%}}
+ @media (prefers-reduced-motion:reduce){
+   .orb .ball::after,.orb .ring,.orb .stars i,.spin .bar.idle i{animation:none}
+ }
 </style>
 
 <div class="wrap">
@@ -164,8 +216,11 @@
           <button class="sm" data-ff="10">⏩⏩ 10세대</button>
           <span id="ffMsg" style="font-size:12px;color:var(--sub)"></span>
         </div>
-        <div class="msg">이동은 <b>갈 수 있는 데까지 아무렇게나</b>, 교배는 같은 칸에 있는 것끼리
-          저절로 일어납니다. 생존 판정·자손 출생 판정·환경 변화·재해도 세대마다 그대로 굴립니다.
+        <div class="msg">이동은 개체가 <b>살아남기 좋은 자리를 스스로 찾아갑니다</b> —
+          갈 수 있는 칸 가운데 적응도가 가장 높은 곳으로 갑니다. 다만 한 칸이 붐비면 그만큼
+          손해라, 좋은 칸이 차면 다음 개체는 조금 못하지만 한산한 칸을 고릅니다.
+          교배는 <b>같은 칸에 있는 것끼리 무작위</b>입니다 — 자리는 환경이 고르지만 짝은 아니니까요.
+          생존 판정·자손 출생 판정·환경 변화·재해도 세대마다 그대로 굴립니다.<br>
           <b style="color:var(--accent2)">되돌릴 수 없습니다</b> — 수업 전에 판이 어떻게 흘러가는지
           보거나, 시간이 모자랄 때 뒤를 몰아서 넘길 때 쓰세요.</div>
       </div>
@@ -257,6 +312,13 @@
 <script src="rules.js"></script>
 <script src="pix.js"></script>
 <script src="net.js"></script>
+<div class="ffov" id="ffOv"><div class="spin">
+  <div class="orb"><div class="stars"></div><div class="ball"></div>
+    <div class="lit"></div><div class="ring"></div></div>
+  <div class="say"><b id="ffTitle">세대가 지나가고 있습니다</b><u id="ffSub"></u></div>
+  <div class="bar" id="ffBar"><i style="width:0%"></i></div>
+</div></div>
+
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -536,21 +598,52 @@ $('#btnNext').onclick=async ()=>{
 $('#btnExtend').onclick=async ()=>{ try{ await RUN('시간연장',CODE,60); tRef=Date.now(); await poll(); }catch(e){} };
 
 /* 빨리감기 — 되돌릴 수 없으므로 한 번 묻는다. 도는 동안 단추를 잠근다 */
+
+/* 빨리감기 — 행성이 도는 동안 보여 준다.
+   별똥별은 한 번만 만들어 둔다(매 프레임 새로 만들면 깜빡인다) */
+let ff별 = false;
+function 행성보이기(제목, 밑줄, 몫){
+  const ov = document.getElementById('ffOv');
+  if (!ff별) {
+    ff별 = true;
+    const st = ov.querySelector('.stars');
+    let h = '';
+    for (let i=0;i<28;i++)
+      h += '<i style="top:'+(Math.random()*100).toFixed(1)+'%;width:'
+        + (8+Math.random()*26).toFixed(0)+'px;opacity:'+(0.25+Math.random()*0.6).toFixed(2)
+        + ';animation-duration:'+(0.5+Math.random()*0.9).toFixed(2)
+        + 's;animation-delay:'+(-Math.random()*1.2).toFixed(2)+'s"></i>';
+    st.innerHTML = h;
+  }
+  document.getElementById('ffTitle').textContent = 제목;
+  document.getElementById('ffSub').textContent = 밑줄 || '';
+  const bar = document.getElementById('ffBar');
+  bar.classList.toggle('idle', 몫 == null);
+  bar.firstElementChild.style.width = (몫 == null ? 38 : Math.round(몫*100)) + '%';
+  ov.classList.add('on');
+}
+function 행성숨기기(){ document.getElementById('ffOv').classList.remove('on'); }
+
 $$('button[data-ff]').forEach(b=>b.onclick=async ()=>{
   const n = +b.dataset.ff;
   if(!confirm(n+'세대를 한 번에 넘깁니다.\n이동과 교배는 저절로 일어나고, 되돌릴 수 없습니다.\n계속할까요?')) return;
   const 단추 = $$('button[data-ff]');
   단추.forEach(x=>x.disabled=true);
   $('#ffMsg').textContent = n+'세대를 굴리는 중…';
+  행성보이기(n+'세대가 지나가고 있습니다', '0 / '+n+'세대', 0);
   try{
-    const r = await RUN('빨리감기', CODE, n);
+    const r = await RUN('빨리감기', CODE, n, p => {
+      행성보이기(n+'세대가 지나가고 있습니다',
+        p.지금+' / '+p.총+'세대  ·  '+p.세대+'세대차  ·  '+p.마리+'마리'
+        + (p.재해 ? '  ·  재해 '+p.재해+'번' : ''), p.지금/p.총);
+    });
     if(!r.ok){ $('#ffMsg').textContent=''; alert(r.msg); }
     else $('#ffMsg').textContent = r.세대+'세대 · 남은 개체 '+r.마리+'마리'
       + (r.재해 ? ' · 재해 '+r.재해+'번' : '')
       + (r.새형질 ? ' · 새 형질 '+r.새형질+'번' : '');
     tRef=Date.now(); await poll();
   }catch(e){ $('#ffMsg').textContent=''; alert('연결이 안 됩니다.'); }
-  finally{ 단추.forEach(x=>x.disabled=false); }
+  finally{ 행성숨기기(); 단추.forEach(x=>x.disabled=false); }
 });
 $$('button[data-go]').forEach(b=>b.onclick=async ()=>{
   if(!confirm(b.textContent+' 단계로 갑니다. 계속할까요?')) return;

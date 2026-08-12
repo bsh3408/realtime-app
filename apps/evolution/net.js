@@ -363,15 +363,22 @@
 
     /* ── 여러 세대를 한 번에 ────────────────────────────────────────
        학생을 기다리지 않고 이동·교배·생존·환경 변화를 저절로 굴린다.
-       판 전체를 선생님 브라우저에서 한꺼번에 돌리고 «끝난 자리» 만 한 번
-       써넣는다 — 세대마다 서버를 오가면 열 세대에 수십 번 왕복한다.
+       판 전체를 선생님 브라우저에서 돌리고 «끝난 자리» 만 써넣는다 —
+       세대마다 개체를 통째로 오가면 열 세대에 수십 번 왕복한다.
 
-       이동은 학생 대신 «갈 수 있는 데까지 아무렇게나» 흩어진다.
-       머리를 써서 좋은 칸으로 보내면 그건 학생이 할 일을 대신 해 버리는
-       것이라, 빨리감기로 나온 결과가 «학생이 잘해서» 인지 «저절로» 인지
-       구분이 안 된다. 아무렇게나 두어야 «환경이 고른 것» 만 남는다. */
-    '빨리감기': function (code, 세대수) {
+       이동은 개체가 «살아남기 좋은 자리» 를 스스로 찾아간다(자리고르기).
+       다만 모두가 최고의 칸 하나로 몰리면 붐빔 벌점이 이득을 다 먹으므로,
+       이미 그 칸으로 가기로 한 수를 세어 가며 고른다.
+
+       교배는 그대로 무작위다 — 같은 칸에 있는 것끼리 아무나 짝짓는다.
+       자리는 환경이 고르는 것이지만 짝은 그렇지 않기 때문이다.
+
+       세대마다 잠깐씩 쉬면서 진행을 알린다(알림). 계산만 하면 눈 깜짝할
+       사이에 끝나서 «시간이 흘렀다» 가 하나도 안 남는다. */
+    '빨리감기': function (code, 세대수, 알림) {
       var n = Math.max(1, Math.min(20, 세대수|0));
+      var 지연 = Math.max(230, Math.round(4200 / n));   // 몇 세대든 4~5초쯤 걸리게
+      var 잠깐 = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
       return EVO.판읽기().then(function (판) {
         var g = 판.game;
         if (!g) return { ok:false, msg:'방이 없습니다.' };
@@ -395,8 +402,10 @@
         var 기록=[], 재해들=[], 새것들=[], 죽은수=0, 태어난수=0, 출생죽음=0, 씨=0;
         var 처음마리 = aliens.length;
 
-        for (var t=0; t<n; t++) {
-          var i, a;
+        /* 한 세대씩 굴리고 잠깐 쉰다. 쉬는 사이에 화면에서 행성이 돈다 */
+        function 한세대(t) {
+          if (t >= n || !aliens.length) return Promise.resolve();
+          var i;
 
           // ① 생존 판정
           var s1 = R.생존판정(aliens, board, st);
@@ -404,15 +413,10 @@
           for (i=0;i<aliens.length;i++) if (죽[aliens[i].id]) aliens[i].alive=false;
           죽은수 += s1.죽음;
 
-          // ② 이동 — 갈 수 있는 만큼 아무렇게나
-          var m = 2;
-          for (i=0;i<aliens.length;i++) {
-            a = aliens[i]; if (!a.alive) continue;
-            a.r = Math.max(0, Math.min(4, a.r + (Math.floor(Math.random()*(2*m+1)) - m)));
-            a.c = Math.max(0, Math.min(4, a.c + (Math.floor(Math.random()*(2*m+1)) - m)));
-          }
+          // ② 이동 — 살아남기 좋은 자리를 스스로 찾아간다 (붐빔까지 셈에 넣는다)
+          R.자리고르기(aliens, board, st, 2);
 
-          // ③ 교배 — 같은 칸에 있는 것끼리 저절로
+          // ③ 교배 — 같은 칸에 있는 것끼리 무작위로
           var 자동 = R.자동교배(aliens, {}, st);
 
           // ④ 세대 교체 (자손은 태어난 자리의 환경으로 한 번 걸러진다)
@@ -449,9 +453,21 @@
             : null;
           예보 = R.무작위변화(env, st);
           기록.push({ 세대:turn, 마리:aliens.length });
-          if (!aliens.length) break;
+          if (알림) 알림({ 지금:t+1, 총:n, 세대:turn, 마리:aliens.length,
+                          재해:재해들.length, 새형질:새것들.length });
+          return 잠깐(지연).then(function () { return 한세대(t+1); });
         }
 
+        /* 시작을 한 번 써 둔다 — 빔 화면과 학생 화면도 «지나가는 중» 을 본다.
+           이게 없으면 반 전체는 결과만 툭 받게 된다 */
+        return EVO.rpc('evo_set_state', { p_code:code, p_game:EVO.gameId, p_patch:{
+            result:{ 단계:'환경 변화', 설명:n+'세대가 지나가고 있습니다',
+                     빨리감기중:{ 총:n, 시작:g.turn } }
+          }})
+          .then(function () { return 한세대(0); })
+          .then(function () { return 마무리(); });
+
+        function 마무리() {
         var st2 = {}; for (var kk in st) st2[kk] = st[kk];
         st2.terrain = terrain; st2.nextEvent = 올재해;
 
@@ -476,6 +492,7 @@
             return { ok:true, 세대:turn, 마리:aliens.length,
                      재해:재해들.length, 새형질:새것들.length };
           }, function (e) { return { ok:false, msg:e.message }; });
+        }
       });
     },
 
